@@ -8,6 +8,15 @@ sobre **lo que falta y por dónde seguir**.
 - [Fase 1 — fundaciones](fase-1-fundaciones.md)
 - [Fase 2 — experiencia central](fase-2-experiencia-central.md)
 - [Fase 3 — cómputo de plazos](fase-3-computo-de-plazos.md)
+- [Fase 4 — cierre del MVP](fase-4-cierre.md)
+
+> **Actualización de la Fase 4 (rama `producto/fase-4-cierre`).** Se resolvieron
+> la cookie de sesión entre dominios (3.3, con el proxy de Vercel), la creación del
+> primer administrador (3.4, `npm run crear-admin`) y se construyeron 4.1 a 4.6:
+> tareas, documentos con el microservicio de PDF, alertas, la pantalla del
+> calendario de inhábiles, costas y cobros, usuarios y la auditoría consultable.
+> El README ya no menciona Passport. Lo que sigue pendiente está marcado
+> **[pendiente]** abajo; lo resuelto, **[resuelto]**.
 
 ---
 
@@ -60,10 +69,10 @@ ni Supabase. Todo se verificó contra la base local.
 | Backend | Autenticación, permisos, panel, catálogos, expedientes, personas, partes, equipo, plazos, movimientos |
 | Motor | `backend/src/modulos/plazos/computo.ts`: cálculo de vencimientos como función pura |
 | Frontend | Sistema de diseño en `src/estilos/`, 12 componentes en `src/componentes/ui/`, 8 pantallas |
-| Pruebas | 145 en el backend (10 archivos). **Ninguna en el frontend.** |
+| Pruebas | 171 en el backend (12 archivos). **Ninguna en el frontend.** |
+| Microservicio | `pdf-service/`: extracción de texto de PDF (Python + FastAPI + pdfplumber) |
 
-Módulos de la barra lateral que **siguen apagados** («En desarrollo»): Documentos,
-Tareas, Honorarios y costas, Informes, Configuración.
+Módulo de la barra lateral que **sigue apagado** («En desarrollo»): Informes.
 
 ---
 
@@ -72,7 +81,7 @@ Tareas, Honorarios y costas, Informes, Configuración.
 Esto necesita una decisión o un dato de una persona. Programar alrededor no lo
 resuelve, y conviene definirlo primero porque condiciona el resto.
 
-### 3.1 Validación jurídica de los plazos
+### 3.1 Validación jurídica de los plazos **[pendiente]**
 
 El motor calcula, pero las reglas que usa son **datos sin validar**:
 
@@ -89,14 +98,16 @@ Hasta que lo valide alguien del estudio o un abogado, **el producto no debe
 presentarse como fuente confiable de vencimientos**. La interfaz ya lo dice
 («es una ayuda, no un dictamen»), y el README también.
 
-### 3.2 Calendario de días inhábiles
+### 3.2 Calendario de días inhábiles **[pendiente: cargar 2027]**
 
 `dia_inhabil` trae solo **2026**: 12 feriados nacionales y 44 días de feria. No hay
 feriados provinciales ni asuetos. Para usarlo de verdad hay que cargar cada año, y
-**hoy eso se hace por SQL** (no existe la pantalla). Un calendario incompleto da
-vencimientos incorrectos sin avisar.
+desde la Fase 4 se hace en **Administración → Calendario judicial** (con alta por
+rango y copia de feriados de fecha fija). Falta cargar 2027. Un calendario
+incompleto da vencimientos incorrectos: la pantalla avisa si el año siguiente
+está vacío.
 
-### 3.3 Despliegue y cookie de sesión
+### 3.3 Despliegue y cookie de sesión **[resuelto: proxy en Vercel]**
 
 La sesión usa un refresh token en cookie `httpOnly`. En producción el frontend
 (Vercel) y la API (Render) son **sitios distintos**, así que la cookie viaja con
@@ -111,9 +122,11 @@ Hay que resolverlo antes de mostrar el sistema desplegado. Dos caminos:
   pasa a ser de primera parte. Hay que apuntar `VITE_API_URL` al mismo origen.
 - **Dominio propio** con subdominios (`app.` y `api.`) y cookie con `Domain`.
 
-No se tocó nada de esto. `vercel.json` hoy solo tiene el rewrite de la SPA.
+Se tomó el primer camino: `frontend/vercel.json` reenvía `/api/*` y `/health` a
+Render, la SPA usa su propio origen en producción y la cookie sale con
+`SameSite=Lax`. Pasos en [`despliegue.md`](despliegue.md).
 
-### 3.4 Antes de desplegar esta rama
+### 3.4 Antes de desplegar esta rama **[resuelto]**
 
 - **`JWT_SECRET` es obligatoria en producción.** El backend se niega a arrancar
   si falta o tiene menos de 32 caracteres (a propósito: la alternativa es firmar
@@ -127,7 +140,7 @@ No se tocó nada de esto. `vercel.json` hoy solo tiene el rewrite de la SPA.
 - **Los usuarios demo no pueden existir en una instalación real.** Las credenciales
   `Demo1234!` están en el seed de datos ficticios. Para una base de producción
   se carga solo `001_catalogos.sql`, nunca `002_datos_demo.sql`, y falta definir
-  cómo se crea el primer administrador (hoy no hay pantalla de usuarios).
+  cómo se crea el primer administrador → `npm run crear-admin` (ver `despliegue.md`, 3.5).
 
 ### 3.5 Propiedad y licencia
 
@@ -142,7 +155,7 @@ son una decisión de ustedes, no técnica.
 
 Ordenado por lo que yo haría primero. Cada punto dice dónde engancharse.
 
-### 4.1 Tareas — chico, el patrón ya está
+### 4.1 Tareas **[resuelto]**
 
 Hoy se **leen** (pestaña del expediente, panel de inicio) pero no se crean, editan
 ni completan. La tabla `tarea` está lista (`causa_id`, `plazo_id`, `asignada_a`,
@@ -151,7 +164,7 @@ repositorio → servicio → controlador → rutas, con `requierePermiso('tarea.
 (los permisos ya existen en la base), y un diálogo en el frontend siguiendo
 `DialogoMovimiento.tsx`. Después, habilitar «Tareas» en `navegacion.ts`.
 
-### 4.2 Documentos y microservicio de PDF — grande
+### 4.2 Documentos y microservicio de PDF **[resuelto; falta OCR]**
 
 Tablas `documento` y `documento_texto`. La carga de archivos y el microservicio
 Python/FastAPI con `pdfplumber` **no existen**; el README los menciona como parte
@@ -159,7 +172,7 @@ del stack. Hay que decidir dónde se guardan los archivos (Supabase Storage es l
 natural dado el stack), límites de tamaño y tipos, y validar el contenido real del
 archivo y no solo la extensión.
 
-### 4.3 Alertas y notificaciones — mediano
+### 4.3 Alertas y notificaciones **[resuelto: evaluadas al consultar; falta correo]**
 
 Tablas `regla_alerta`, `alerta`, `notificacion`: sin código. Las alertas
 multinivel sobre vencimientos (crítica / importante / informativa) son parte del
@@ -167,18 +180,18 @@ alcance del MVP. Para que sirvan hace falta algo que corra periódicamente; en
 Render gratis el servicio se duerme, así que hay que decidir el mecanismo (un
 cron externo, o evaluar las alertas al consultar, como hace hoy la agenda).
 
-### 4.4 Calendario de días inhábiles — chico, y urgente por 3.2
+### 4.4 Calendario de días inhábiles **[resuelto]**
 
 Pantalla para cargar y editar `dia_inhabil` por año. Hoy solo se puede por SQL.
 Para facilitar la carga conviene poder dar de alta un rango (la feria) de una vez.
 
-### 4.5 Costas y honorarios
+### 4.5 Costas y honorarios **[resuelto]**
 
 Tablas `costa` y `cobro`. Hoy solo se lee `vw_costa_saldo` para el indicador
 «Saldo por cobrar» del inicio; no hay ninguna pantalla ni API de escritura. El
 README lo incluye en el alcance, con reporte exportable.
 
-### 4.6 Usuarios, roles, configuración y auditoría consultable
+### 4.6 Usuarios, roles, configuración y auditoría consultable **[resuelto salvo configuración visual]**
 
 - **Usuarios**: alta, baja, cambio de rol y de contraseña. No hay forma de crear un
   usuario ni de cambiar una contraseña desde la aplicación.
@@ -188,14 +201,14 @@ README lo incluye en el alcance, con reporte exportable.
 - **Auditoría**: se escribe en cada operación de escritura (con el antes y el
   después, sin contraseñas ni tokens), pero **no hay pantalla para consultarla**.
 
-### 4.7 Plantillas de escritos, informes, calendario de eventos
+### 4.7 Plantillas de escritos, informes, calendario de eventos **[pendiente]**
 
 - `plantilla_escrito`: sin código.
 - Informes: sin código.
 - `evento_calendario` (audiencias, reuniones): el panel de inicio los **lee**, pero
   no se pueden crear. La agenda actual muestra solo plazos.
 
-### 4.8 Prórrogas
+### 4.8 Prórrogas **[pendiente]**
 
 `tipo_plazo.prorrogable` existe y «Ofrecer prueba» está marcado como prorrogable,
 pero el motor no hace nada con eso. Hoy una prórroga se registra editando los días
@@ -218,11 +231,11 @@ README y sin ningún código.
 | **Sin control de concurrencia** | Si dos personas editan el mismo expediente, gana la última. `actualizado_en` ya existe y alcanza para un control optimista. |
 | **El CI no corre al subir una rama** | `ci.yml` se dispara en `pull_request` y en push a `main`. **Hay que abrir un PR para que corra**, y es la única verificación sobre una base limpia: lo de este informe se probó solo en local. |
 | **Rate limit solo en login** | El resto de la API no está limitada. |
+| **Un solo bundle** | El build avisa que supera 500 kB. Se puede partir con `React.lazy` por ruta. |
 | **Los permisos viajan en el token de acceso** | Un cambio de rol tarda hasta 15 minutos en aplicarse. Es una decisión consciente (evita una consulta por petición). |
 | **Movimientos** | Se crean y se borran, pero no se editan; la importación del Poder Judicial no existe (no hay API pública). |
 | **Búsqueda global (Ctrl+K)** | Busca expedientes y personas; no plazos. |
 | **Accesibilidad** | Se construyó con foco visible, etiquetas y estados que no dependen del color, pero **no se auditó** con una herramienta ni con lector de pantalla. |
-| **Un solo bundle** | 458 kB sin code-splitting. No es un problema hoy. |
 | **Fin de línea** | Git avisa `CRLF will be replaced by LF` en cada commit. Conviene un `.gitattributes`. |
 
 ---
@@ -233,9 +246,10 @@ README y sin ningún código.
 autenticación es **«JWT + Passport.js»**. **No se usó Passport.** Se implementó con
 `jsonwebtoken` + `bcryptjs`, access token de 15 minutos en memoria y refresh token
 opaco en cookie `httpOnly` con rotación y detección de reutilización (el porqué
-está en el informe de la Fase 1). No se editaron esos documentos porque son parte de
-las entregas académicas ya presentadas: es decisión de ustedes si se corrigen o se
-aclara en el informe final.
+está en el informe de la Fase 1). En la Fase 4 se corrigió el **README** (que es la
+puerta de entrada del repositorio). `arquitectura.md` y `propuesta-proyecto.md` se
+dejaron como se entregaron; la aclaración va en el informe final
+([`informe-final.md`](informe-final.md), sección de desvíos).
 
 ---
 
