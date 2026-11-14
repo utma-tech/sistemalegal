@@ -9,9 +9,9 @@
 
 | | |
 |---|---|
-| Repositorio | https://github.com/martinmaine/sistemalegal |
-| Aplicación desplegada | **[COMPLETAR]** dominio de Vercel |
-| API | **[COMPLETAR]** `https://…onrender.com/health` |
+| Repositorio | https://github.com/utma-tech/sistemalegal |
+| Aplicación desplegada | https://sistemalegal-henna.vercel.app |
+| API | https://sistemalegal-api.onrender.com/health (también por el proxy: https://sistemalegal-henna.vercel.app/health) |
 | Video | **[COMPLETAR]** |
 | Usuarios de demostración | `admin@estudiodemo.test`, `jefe@estudiodemo.test`, `empleado1@estudiodemo.test` — contraseña `Demo1234!` (datos ficticios) |
 

@@ -247,7 +247,7 @@ sin valores reales.
 ## 5. Verificación de punta a punta
 
 ```bash
-curl https://sistemalegal.vercel.app/health           # por el proxy: estado ok, base conectada
+curl https://sistemalegal-henna.vercel.app/health     # por el proxy: estado ok, base conectada
 curl https://sistemalegal-pdf.onrender.com/health      # microservicio de PDF
 ```
 
