@@ -59,3 +59,72 @@ function texto(lista: OpcionVocabulario[], codigo: string | null | undefined): s
 export const caracterLegible = (codigo: string | null | undefined) => texto(CARACTERES_PARTE, codigo);
 export const rolLegible = (codigo: string | null | undefined) => texto(ROLES_PROFESIONAL, codigo);
 export const tipoPersonaLegible = (codigo: string | null | undefined) => texto(TIPOS_PERSONA, codigo);
+
+/* --- Módulos de operación ---------------------------------------------------- */
+
+/** `ck_tarea_prioridad` — migración 009. */
+export const PRIORIDADES_TAREA: OpcionVocabulario[] = [
+  { valor: 'ALTA', texto: 'Alta' },
+  { valor: 'MEDIA', texto: 'Media' },
+  { valor: 'BAJA', texto: 'Baja' },
+];
+
+/** `ck_tarea_estado` — migración 009. */
+export const ESTADOS_TAREA: OpcionVocabulario[] = [
+  { valor: 'PENDIENTE', texto: 'Pendiente' },
+  { valor: 'EN_CURSO', texto: 'En curso' },
+  { valor: 'COMPLETADA', texto: 'Completada' },
+  { valor: 'CANCELADA', texto: 'Cancelada' },
+];
+
+/** `ck_dia_inhabil_tipo` — migración 006. */
+export const TIPOS_INHABIL: OpcionVocabulario[] = [
+  { valor: 'FERIADO_NACIONAL', texto: 'Feriado nacional' },
+  { valor: 'FERIADO_PROVINCIAL', texto: 'Feriado provincial' },
+  { valor: 'FERIA_JUDICIAL', texto: 'Feria judicial' },
+  { valor: 'ASUETO', texto: 'Asueto' },
+  { valor: 'OTRO', texto: 'Otro' },
+];
+
+/** `ck_costa_a_cargo` — migración 008. */
+export const A_CARGO_COSTA: OpcionVocabulario[] = [
+  { valor: 'CLIENTE', texto: 'Cliente' },
+  { valor: 'ESTUDIO', texto: 'Estudio (a recuperar)' },
+  { valor: 'CONTRARIA', texto: 'Parte contraria' },
+];
+
+/** `ck_costa_estado` — migración 008. */
+export const ESTADOS_COBRO: OpcionVocabulario[] = [
+  { valor: 'PENDIENTE', texto: 'Pendiente' },
+  { valor: 'PARCIAL', texto: 'Cobro parcial' },
+  { valor: 'COBRADO', texto: 'Cobrada' },
+  { valor: 'INCOBRABLE', texto: 'Incobrable' },
+];
+
+/** `ck_cobro_medio` — migración 008. */
+export const MEDIOS_PAGO: OpcionVocabulario[] = [
+  { valor: 'TRANSFERENCIA', texto: 'Transferencia' },
+  { valor: 'EFECTIVO', texto: 'Efectivo' },
+  { valor: 'CHEQUE', texto: 'Cheque' },
+  { valor: 'TARJETA', texto: 'Tarjeta' },
+  { valor: 'OTRO', texto: 'Otro' },
+];
+
+/** `ck_rol_codigo` — migración 003. */
+export const ROLES_USUARIO: OpcionVocabulario[] = [
+  { valor: 'ADMIN', texto: 'Administrador' },
+  { valor: 'JEFE_ESTUDIO', texto: 'Jefe de Estudio' },
+  { valor: 'EMPLEADO', texto: 'Empleado' },
+];
+
+export const NIVELES_ALERTA: OpcionVocabulario[] = [
+  { valor: 'CRITICA', texto: 'Crítica' },
+  { valor: 'IMPORTANTE', texto: 'Importante' },
+  { valor: 'INFORMATIVA', texto: 'Informativa' },
+];
+
+export const tipoInhabilLegible = (codigo: string | null | undefined) => texto(TIPOS_INHABIL, codigo);
+export const aCargoLegible = (codigo: string | null | undefined) => texto(A_CARGO_COSTA, codigo);
+export const estadoCobroLegible = (codigo: string | null | undefined) => texto(ESTADOS_COBRO, codigo);
+export const medioPagoLegible = (codigo: string | null | undefined) => texto(MEDIOS_PAGO, codigo);
+export const nivelAlertaLegible = (codigo: string | null | undefined) => texto(NIVELES_ALERTA, codigo);

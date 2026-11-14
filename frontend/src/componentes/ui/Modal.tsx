@@ -46,6 +46,11 @@ export function Modal({ abierto, alCerrar, titulo, descripcion, ancho, pie, chil
     (primero ?? dialogo.current)?.focus();
 
     function alPresionar(evento: KeyboardEvent) {
+      // Con un diálogo abierto encima de otro (editar una costa desde su
+      // detalle), las teclas son del de arriba: el último montado en el DOM.
+      const dialogos = document.querySelectorAll('[role="dialog"]');
+      if (dialogos.length > 1 && dialogos[dialogos.length - 1] !== dialogo.current) return;
+
       if (evento.key === 'Escape') {
         evento.stopPropagation();
         alCerrar();

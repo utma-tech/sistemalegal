@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Menu, Search, UserRound } from 'lucide-react';
+import { KeyRound, LogOut, Menu, Search, UserRound } from 'lucide-react';
 import { useSesion } from '../../modulos/auth/ContextoSesion';
 import { iniciales } from '../../lib/formato';
 import { Boton } from '../ui/Boton';
+import { BandejaNotificaciones } from '../../modulos/alertas/BandejaNotificaciones';
+import { DialogoMiPassword } from '../../modulos/usuarios/DialogoMiPassword';
 
 /**
  * Barra superior: contexto de la sección, búsqueda global y usuario.
@@ -18,6 +20,7 @@ interface Props {
 export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
   const { usuario, cerrarSesion } = useSesion();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [cambiandoPassword, setCambiandoPassword] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
   const navegar = useNavigate();
 
@@ -95,6 +98,8 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
           icono={<Search size={18} aria-hidden />}
         />
 
+        <BandejaNotificaciones />
+
         <div className="menu-usuario" ref={contenedor}>
           <button
             type="button"
@@ -127,6 +132,19 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
                 </p>
               </div>
 
+              <button
+                type="button"
+                className="menu__item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  setCambiandoPassword(true);
+                }}
+              >
+                <KeyRound size={16} aria-hidden />
+                Cambiar mi contraseña
+              </button>
+
               <button type="button" className="menu__item menu__item--peligro" role="menuitem" onClick={salir}>
                 <LogOut size={16} aria-hidden />
                 Cerrar sesión
@@ -135,6 +153,8 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
           )}
         </div>
       </div>
+
+      {cambiandoPassword && <DialogoMiPassword alCerrar={() => setCambiandoPassword(false)} />}
     </header>
   );
 }

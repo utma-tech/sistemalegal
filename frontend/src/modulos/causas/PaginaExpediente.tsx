@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlarmClock,
-  CalendarDays,
+  Banknote,
   FileText,
   Gavel,
   History,
@@ -18,12 +18,10 @@ import {
 import {
   useCausa,
   useDesasignarProfesional,
-  useDocumentosCausa,
   useEliminarCausa,
   useMovimientosCausa,
   usePlazosCausa,
   useQuitarParte,
-  useTareasCausa,
 } from '../../servicios/consultas';
 import type { ParteCausa, ProfesionalCausa } from '../../tipos/api';
 import { caracterLegible, rolLegible, tipoPersonaLegible } from '../../lib/vocabulario';
@@ -39,14 +37,12 @@ import { DialogoAgregarParte } from './DialogoAgregarParte';
 import { DialogoAsignarProfesional } from './DialogoAsignarProfesional';
 import { DialogoMovimiento } from './DialogoMovimiento';
 import { PanelPlazos } from '../plazos/PanelPlazos';
-import {
-  EstadoCausa,
-  EstadoTarea,
-  Etiqueta,
-  Prioridad,
-} from '../../componentes/ui/Etiqueta';
+import { EstadoCausa, Etiqueta } from '../../componentes/ui/Etiqueta';
+import { PanelDocumentos } from '../documentos/PanelDocumentos';
+import { PanelTareasCausa } from '../tareas/PanelTareasCausa';
+import { PanelCostasCausa } from '../costas/PanelCostasCausa';
 import { Cargando, ErrorCarga, EsqueletoLista, Vacio } from '../../componentes/ui/Estados';
-import { fecha, fechaHora, importe, legible, tamanoArchivo } from '../../lib/formato';
+import { fecha, fechaHora, importe, legible } from '../../lib/formato';
 
 /**
  * Detalle del expediente.
@@ -61,7 +57,7 @@ import { fecha, fechaHora, importe, legible, tamanoArchivo } from '../../lib/for
  * los plazos de un expediente y el botón Atrás vuelve a la solapa anterior.
  */
 
-type Pestana = 'resumen' | 'actividad' | 'partes' | 'plazos' | 'documentos' | 'tareas';
+type Pestana = 'resumen' | 'actividad' | 'partes' | 'plazos' | 'documentos' | 'tareas' | 'costas';
 
 const PESTANAS: { clave: Pestana; texto: string; icono: typeof Scale }[] = [
   { clave: 'resumen', texto: 'Resumen', icono: FileText },
@@ -70,6 +66,7 @@ const PESTANAS: { clave: Pestana; texto: string; icono: typeof Scale }[] = [
   { clave: 'plazos', texto: 'Plazos', icono: AlarmClock },
   { clave: 'documentos', texto: 'Documentos', icono: Paperclip },
   { clave: 'tareas', texto: 'Tareas', icono: ListChecks },
+  { clave: 'costas', texto: 'Costas', icono: Banknote },
 ];
 
 function esPestana(valor: string | null): valor is Pestana {
@@ -151,8 +148,6 @@ export function PaginaExpediente() {
   // Cada pestaña solo consulta cuando está abierta.
   const movimientos = useMovimientosCausa(id, activa === 'actividad');
   const plazos = usePlazosCausa(id, activa === 'plazos');
-  const documentos = useDocumentosCausa(id, activa === 'documentos');
-  const tareas = useTareasCausa(id, activa === 'tareas');
 
   function irA(pestana: Pestana) {
     const siguientes = new URLSearchParams(parametros);
@@ -603,96 +598,12 @@ export function PaginaExpediente() {
           />
         )}
 
-        {activa === 'documentos' && (
-          <Tarjeta titulo="Documentos" sinRelleno>
-            {documentos.isPending && <EsqueletoLista />}
-            {documentos.isError && (
-              <ErrorCarga error={documentos.error} reintentar={() => void documentos.refetch()} />
-            )}
-            {documentos.data?.length === 0 && (
-              <Vacio
-                titulo="Sin documentos"
-                texto="La carga de archivos se habilita en la fase de gestión documental."
-                icono={<Paperclip size={20} aria-hidden />}
-              />
-            )}
-            {documentos.data && documentos.data.length > 0 && (
-              <div className="lista">
-                {documentos.data.map((documento) => (
-                  <div key={documento.id} className="lista__item">
-                    <span className="indicador__icono" style={{ width: 30, height: 30 }} aria-hidden>
-                      <FileText size={15} />
-                    </span>
-                    <span className="lista__cuerpo">
-                      <span className="lista__titulo">{documento.nombre_original}</span>
-                      <span className="lista__meta">
-                        {documento.tipo_documento ?? 'Sin clasificar'} ·{' '}
-                        {tamanoArchivo(documento.tamano_bytes)} · {fecha(documento.fecha_subida)}
-                        {documento.subido_por && ` · ${documento.subido_por}`}
-                      </span>
-                    </span>
-                    <span className="lista__lateral">
-                      <Etiqueta
-                        tono={
-                          documento.estado_extraccion === 'COMPLETADA'
-                            ? 'exito'
-                            : documento.estado_extraccion === 'ERROR'
-                              ? 'peligro'
-                              : 'neutral'
-                        }
-                        title="Estado de la extracción de texto del PDF"
-                      >
-                        {legible(documento.estado_extraccion)}
-                      </Etiqueta>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Tarjeta>
-        )}
+        {activa === 'documentos' && id && <PanelDocumentos causaId={id} />}
 
-        {activa === 'tareas' && (
-          <Tarjeta titulo="Tareas del expediente" sinRelleno>
-            {tareas.isPending && <EsqueletoLista />}
-            {tareas.isError && <ErrorCarga error={tareas.error} reintentar={() => void tareas.refetch()} />}
-            {tareas.data?.length === 0 && (
-              <Vacio
-                titulo="Sin tareas"
-                texto="Las tareas vinculadas a este expediente aparecen acá."
-                icono={<ListChecks size={20} aria-hidden />}
-              />
-            )}
-            {tareas.data && tareas.data.length > 0 && (
-              <div className="lista">
-                {tareas.data.map((tarea) => (
-                  <div key={tarea.id} className="lista__item">
-                    <span className="lista__cuerpo">
-                      <span className="lista__titulo">{tarea.titulo}</span>
-                      <span className="lista__meta">
-                        {tarea.asignada_a ?? 'Sin asignar'}
-                        {tarea.fecha_vencimiento && (
-                          <>
-                            {' · '}
-                            <CalendarDays
-                              size={12}
-                              aria-hidden
-                              style={{ display: 'inline', verticalAlign: -2 }}
-                            />{' '}
-                            {fecha(tarea.fecha_vencimiento)}
-                          </>
-                        )}
-                      </span>
-                    </span>
-                    <span className="lista__lateral">
-                      <Prioridad prioridad={tarea.prioridad} />
-                      <EstadoTarea estado={tarea.estado} />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Tarjeta>
+        {activa === 'tareas' && id && <PanelTareasCausa causaId={id} caratula={causa.caratula} />}
+
+        {activa === 'costas' && id && puede('costa.ver') && (
+          <PanelCostasCausa causaId={id} caratula={causa.caratula} />
         )}
       </div>
 
