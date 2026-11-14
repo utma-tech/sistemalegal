@@ -26,7 +26,12 @@ export interface Almacenamiento {
 
 function supabase(url: string, claveServicio: string, bucket: string): Almacenamiento {
   const base = `${url.replace(/\/+$/, '')}/storage/v1/object/${encodeURIComponent(bucket)}`;
-  const cabeceras = { Authorization: `Bearer ${claveServicio}`, apikey: claveServicio };
+  // La clave clásica `service_role` es un JWT y va también como Bearer; las
+  // claves nuevas (`sb_secret_…`) no son JWT y solo se aceptan en `apikey`.
+  const esJwt = claveServicio.startsWith('eyJ');
+  const cabeceras: Record<string, string> = esJwt
+    ? { Authorization: `Bearer ${claveServicio}`, apikey: claveServicio }
+    : { apikey: claveServicio };
   const ruta = (clave: string) => `${base}/${clave.split('/').map(encodeURIComponent).join('/')}`;
 
   async function exigirOk(respuesta: Response, accion: string): Promise<void> {

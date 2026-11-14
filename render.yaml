@@ -1,14 +1,23 @@
-# Configuración del servicio en Render, versionada en el repositorio.
+# Configuración de los servicios en Render, versionada en el repositorio.
 # Render la lee al crear el servicio con "New > Blueprint".
+#
+# Estos son los servicios del entorno de desarrollo de UTMA, que despliegan
+# desde utma-tech/sistemalegal. Llevan "utma" en el nombre para no chocar con
+# sistemalegal-api, el servicio que despliega desde martinmaine/sistemalegal
+# (ver docs/flujo-repositorios.md). Al transferir a Martín, se vuelven a los
+# nombres sin "utma".
 #
 # Las variables marcadas con sync: false NO viajan en el repositorio: se cargan
 # a mano en el panel de Render (docs/arquitectura.md, sección 6).
 services:
   - type: web
-    name: sistemalegal-api
+    name: sistemalegal-utma-api
     runtime: node
     plan: free
     region: oregon
+    # Solo main despliega; las ramas de trabajo se prueban en local y en CI.
+    branch: main
+    autoDeploy: true
     rootDir: backend
     # --include=dev no es opcional: NODE_ENV=production hace que npm ci omita
     # las devDependencies, y entonces el build no usa el TypeScript del
@@ -60,10 +69,12 @@ services:
         value: documentos
 
   - type: web
-    name: sistemalegal-pdf
+    name: sistemalegal-utma-pdf
     runtime: python
     plan: free
     region: oregon
+    branch: main
+    autoDeploy: true
     rootDir: pdf-service
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
