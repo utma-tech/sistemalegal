@@ -40,14 +40,29 @@ services:
       PORT: 4000
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-devpass}@db:5432/${POSTGRES_DB:-sistemalegal}
       CORS_ORIGIN: http://localhost:5173
+      PDF_SERVICE_URL: http://pdf:8000
+      # Los archivos subidos quedan en un volumen: sobreviven a reiniciar el contenedor.
+      ALMACENAMIENTO_DIR: /almacenamiento
     ports:
       - '4000:4000'
     depends_on:
       db:
         condition: service_healthy
+      pdf:
+        condition: service_started
     volumes:
       - ./backend/src:/app/src:ro
       - ./backend/tests:/app/tests:ro
+      - archivos:/almacenamiento
+
+  # Extracción de texto de PDF (Python + FastAPI + pdfplumber). Sin token en
+  # local: solo lo alcanza el backend dentro de la red de compose... y el host,
+  # por el puerto publicado, para probarlo con curl.
+  pdf:
+    build:
+      context: ./pdf-service
+    ports:
+      - '8000:8000'
 
   frontend:
     build:
@@ -66,3 +81,4 @@ services:
 
 volumes:
   datos-db:
+  archivos:

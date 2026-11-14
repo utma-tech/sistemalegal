@@ -34,12 +34,13 @@ export interface Catalogos {
   tiposDocumento: OpcionCatalogo[];
   profesionales: OpcionCatalogo[];
   tiposPlazo: OpcionTipoPlazo[];
+  conceptosCosta: OpcionCatalogo[];
 }
 
 export async function obtenerTodos(): Promise<Catalogos> {
   const pool = obtenerPool();
 
-  const [fueros, estados, tribunales, tiposCausa, tiposDocumento, profesionales, tiposPlazo] =
+  const [fueros, estados, tribunales, tiposCausa, tiposDocumento, profesionales, tiposPlazo, conceptosCosta] =
     await Promise.all([
     pool.query<OpcionCatalogo>(
       `SELECT id, nombre, codigo FROM fuero WHERE activo ORDER BY nombre`,
@@ -77,6 +78,9 @@ export async function obtenerTodos(): Promise<Catalogos> {
         WHERE activo
         ORDER BY nombre`,
     ),
+    pool.query<OpcionCatalogo>(
+      `SELECT id, nombre, codigo FROM concepto_costa WHERE activo ORDER BY nombre`,
+    ),
   ]);
 
   return {
@@ -87,5 +91,6 @@ export async function obtenerTodos(): Promise<Catalogos> {
     tiposDocumento: tiposDocumento.rows,
     profesionales: profesionales.rows,
     tiposPlazo: tiposPlazo.rows,
+    conceptosCosta: conceptosCosta.rows,
   };
 }

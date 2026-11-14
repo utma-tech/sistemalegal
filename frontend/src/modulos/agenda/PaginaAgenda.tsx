@@ -13,6 +13,7 @@ import { FiltroSelect } from '../../componentes/ui/Campo';
 import { Paginacion } from '../../componentes/ui/Paginacion';
 import { EstadoPlazo, Etiqueta, Vencimiento } from '../../componentes/ui/Etiqueta';
 import { ErrorCarga, EsqueletoLista, Vacio } from '../../componentes/ui/Estados';
+import { TarjetaAlertas } from '../alertas/TarjetaAlertas';
 
 /**
  * Agenda de plazos del estudio.
@@ -142,6 +143,8 @@ export function PaginaAgenda() {
           )
         }
       />
+
+      <TarjetaAlertas alcance={responsable && responsable === usuario?.id ? 'mias' : 'todas'} />
 
       <Tarjeta>
         <div className="barra-filtros">

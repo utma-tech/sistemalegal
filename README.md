@@ -8,14 +8,16 @@ análisis de textos legales y como apoyo a la búsqueda de jurisprudencia.
 - **Mercado inicial:** Provincia de Córdoba, Argentina.
 - **Arquitectura:** preparada para configurar otras provincias (días inhábiles y formatos de
   tribunales configurables); el MVP se valida solo con Córdoba.
-- **Estado:** en desarrollo — Versión 0.1.0 (MVP). Esquema de base de datos y módulos
-  definidos (2.ª entrega). **Fases 1 a 3 de producto completas**: autenticación con roles
-  y permisos verificados en el servidor; gestión de expedientes, personas, partes y
-  equipo; y el **cómputo de plazos procesales** con la explicación de cómo llegó a cada
-  fecha ([Fase 1](docs/fase-1-fundaciones.md) ·
+- **Estado:** Versión 1.0.0 (MVP) para la entrega final. Autenticación con roles y
+  permisos verificados en el servidor; expedientes, personas, partes y equipo; **cómputo
+  de plazos procesales** con su explicación; calendario judicial editable; **alertas
+  multinivel** y bandeja de avisos; tareas; **documentos** con extracción de texto de PDF
+  y búsqueda de texto completo; **costas y cobros** con reporte exportable; usuarios y
+  auditoría consultable. Detalle por fase: [Fase 1](docs/fase-1-fundaciones.md) ·
   [Fase 2](docs/fase-2-experiencia-central.md) ·
-  [Fase 3](docs/fase-3-computo-de-plazos.md)). **Para retomar el trabajo, empezar por
-  [`docs/traspaso-y-pendientes.md`](docs/traspaso-y-pendientes.md).**
+  [Fase 3](docs/fase-3-computo-de-plazos.md) ·
+  [Fase 4](docs/fase-4-cierre.md). Lo que queda afuera y por qué:
+  [`docs/traspaso-y-pendientes.md`](docs/traspaso-y-pendientes.md).
 
 > **Trabajo Final Integrador** — Tecnicatura Universitaria en Programación a Distancia.
 >
@@ -87,7 +89,7 @@ con el Poder Judicial · portal de cliente · operación multi-provincia activa.
 | Base de datos | PostgreSQL | Supabase (alternativa: Neon) |
 | Microservicio PDF → texto | Python + FastAPI + `pdfplumber` | Render (servicio separado) |
 | IA | Claude API (Anthropic) | SaaS externo (opcional) |
-| Autenticación | JWT + Passport.js | — |
+| Autenticación | JWT (`jsonwebtoken`) + `bcryptjs`, refresh token en cookie `httpOnly` con rotación | — |
 | Entorno local | Docker + Docker Compose | — |
 | Control de versiones y gestión | Git + GitHub + GitHub Projects | GitHub |
 
@@ -111,17 +113,17 @@ sistemalegal/
 │   └── schema.sql         Esquema consolidado
 ├── frontend/              Aplicación React + TypeScript
 ├── backend/               API Node + Express + TypeScript
+├── pdf-service/           Microservicio Python (FastAPI + pdfplumber) de extracción de texto
 ├── docker-compose.yml     Entorno local completo
 └── render.yaml            Configuración del servicio en Render
 ```
 
-> **Fases 1 a 3.** El backend expone autenticación, panel, catálogos, la gestión completa
-> de causas y personas, y el motor de cómputo de plazos; el frontend tiene su sistema de
-> diseño, su estructura de navegación y las pantallas de trabajo diario funcionando contra
-> la API. El detalle de qué quedó hecho, qué decisiones se tomaron y qué falta está en
-> [`docs/fase-1-fundaciones.md`](docs/fase-1-fundaciones.md),
-> [`docs/fase-2-experiencia-central.md`](docs/fase-2-experiencia-central.md) y
-> [`docs/fase-3-computo-de-plazos.md`](docs/fase-3-computo-de-plazos.md).
+> **Fases 1 a 4.** El detalle de qué quedó hecho, qué decisiones se tomaron y qué falta
+> está en [`docs/fase-1-fundaciones.md`](docs/fase-1-fundaciones.md),
+> [`docs/fase-2-experiencia-central.md`](docs/fase-2-experiencia-central.md),
+> [`docs/fase-3-computo-de-plazos.md`](docs/fase-3-computo-de-plazos.md) y
+> [`docs/fase-4-cierre.md`](docs/fase-4-cierre.md). El informe final está en
+> [`docs/informe-final.md`](docs/informe-final.md).
 >
 > El cómputo de plazos calcula sobre el calendario de días inhábiles cargado en la base y
 > explica cómo llegó a cada fecha. **Las reglas jurídicas del catálogo todavía no están
@@ -142,9 +144,9 @@ cp .env.example .env      # los valores por defecto ya sirven para el entorno lo
 docker compose up
 ```
 
-Levanta el frontend en http://localhost:5173, el backend en http://localhost:4000 y una
-base PostgreSQL con el esquema y los datos ficticios ya aplicados. El microservicio PDF se
-suma cuando entre el módulo de documentos.
+Levanta el frontend en http://localhost:5173, el backend en http://localhost:4000, el
+microservicio de PDF en http://localhost:8000 y una base PostgreSQL con el esquema y los
+datos ficticios ya aplicados.
 
 > Si ya tenés un PostgreSQL ocupando el puerto 5432, poné `PUERTO_DB=5433` en el `.env`.
 

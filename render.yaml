@@ -38,3 +38,39 @@ services:
         sync: false
       - key: CORS_PREFIJO_PREVIEW
         value: sistemalegal
+      # El navegador le habla a Vercel, que reenvía /api a este servicio
+      # (frontend/vercel.json): hay dos proxies delante de Express y la cookie
+      # de sesión es de primera parte.
+      - key: SALTOS_PROXY
+        value: '2'
+      - key: COOKIE_SAMESITE
+        value: lax
+      # Microservicio de PDF (servicio de abajo). URL pública de Render, sin barra final.
+      - key: PDF_SERVICE_URL
+        sync: false
+      - key: PDF_SERVICE_TOKEN
+        sync: false
+      # Supabase Storage para los documentos: el disco de Render gratis se borra
+      # en cada despliegue. Clave service_role (Settings > API): solo vive acá.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: documentos
+
+  - type: web
+    name: sistemalegal-pdf
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: pdf-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: '3.12.8'
+      # El mismo valor que PDF_SERVICE_TOKEN del backend.
+      - key: PDF_SERVICE_TOKEN
+        sync: false

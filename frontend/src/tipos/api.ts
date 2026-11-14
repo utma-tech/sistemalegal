@@ -302,6 +302,7 @@ export interface Catalogos {
   tiposDocumento: OpcionCatalogo[];
   profesionales: OpcionCatalogo[];
   tiposPlazo: OpcionTipoPlazo[];
+  conceptosCosta: OpcionCatalogo[];
 }
 
 /** Regla de plazo del catálogo: el formulario precarga sus valores. */
@@ -364,4 +365,173 @@ export interface EstadoSalud {
   base: 'conectada' | 'sin-conexion';
   detalleBase?: string;
   momento: string;
+}
+
+/* --- Tareas ---------------------------------------------------------------- */
+
+export interface Tarea {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  estado: 'PENDIENTE' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA';
+  prioridad: 'ALTA' | 'MEDIA' | 'BAJA';
+  fecha_vencimiento: string | null;
+  dias_restantes: number | null;
+  causa_id: string | null;
+  caratula: string | null;
+  numero_expediente: string | null;
+  plazo_id: string | null;
+  plazo: string | null;
+  asignada_a_id: string | null;
+  asignada_a: string | null;
+  creada_por: string | null;
+  completada_en: string | null;
+  creado_en: string;
+}
+
+/* --- Calendario ------------------------------------------------------------ */
+
+export interface DiaInhabil {
+  id: string;
+  fecha: string;
+  tipo: string;
+  motivo: string;
+  /** ISO: 1 = lunes … 7 = domingo. */
+  dia_semana: number;
+}
+
+export interface CalendarioInhabiles {
+  datos: DiaInhabil[];
+  anios: { anio: number; cantidad: number }[];
+}
+
+/* --- Alertas y notificaciones ---------------------------------------------- */
+
+export type NivelAlerta = 'CRITICA' | 'IMPORTANTE' | 'INFORMATIVA';
+
+export interface AlertaVigente {
+  plazo_id: string;
+  causa_id: string;
+  caratula: string;
+  numero_expediente: string | null;
+  descripcion: string;
+  fecha_vencimiento: string;
+  responsable_id: string | null;
+  responsable: string | null;
+  habiles_restantes: number;
+  nivel: NivelAlerta;
+  mensaje: string;
+}
+
+export interface Alertas {
+  datos: AlertaVigente[];
+  resumen: Record<NivelAlerta, number>;
+}
+
+export interface Notificacion {
+  id: string;
+  titulo: string;
+  mensaje: string;
+  nivel: NivelAlerta | null;
+  causa_id: string | null;
+  leida_en: string | null;
+  creado_en: string;
+}
+
+export interface Bandeja {
+  datos: Notificacion[];
+  no_leidas: number;
+}
+
+/* --- Usuarios -------------------------------------------------------------- */
+
+export interface Integrante {
+  id: string;
+  email: string;
+  nombre: string;
+  apellido: string;
+  matricula: string | null;
+  telefono: string | null;
+  rol: 'ADMIN' | 'JEFE_ESTUDIO' | 'EMPLEADO';
+  rol_nombre: string;
+  activo: boolean;
+  ultimo_acceso_en: string | null;
+  creado_en: string;
+}
+
+export interface Rol {
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+}
+
+/* --- Costas ---------------------------------------------------------------- */
+
+export interface Costa {
+  costa_id: string;
+  causa_id: string;
+  numero_expediente: string | null;
+  caratula: string;
+  concepto_costa_id: string;
+  concepto: string;
+  descripcion: string | null;
+  monto: string;
+  moneda: string;
+  fecha_devengamiento: string;
+  fecha_vencimiento_pago: string | null;
+  a_cargo_de: 'ESTUDIO' | 'CLIENTE' | 'CONTRARIA';
+  estado_cobro: 'PENDIENTE' | 'PARCIAL' | 'COBRADO' | 'INCOBRABLE';
+  comprobante: string | null;
+  total_cobrado: string;
+  saldo_pendiente: string;
+}
+
+export interface PaginaCostas extends Pagina<Costa> {
+  totales: { monto: string; cobrado: string; saldo: string };
+}
+
+export interface Cobro {
+  id: string;
+  monto: string;
+  fecha: string;
+  medio_pago: string;
+  comprobante: string | null;
+  observaciones: string | null;
+  registrado_por: string | null;
+}
+
+/* --- Documentos ------------------------------------------------------------ */
+
+export interface ResultadoBusquedaDocumento {
+  id: string;
+  causa_id: string;
+  caratula: string;
+  numero_expediente: string | null;
+  nombre_original: string;
+  fragmento: string;
+}
+
+export interface TextoDocumento {
+  estado: string;
+  texto: string | null;
+  cantidad_paginas?: number | null;
+  mensaje_error?: string | null;
+}
+
+/* --- Auditoría ------------------------------------------------------------- */
+
+export interface EventoAuditoria {
+  id: string;
+  fecha: string;
+  entidad: string;
+  entidad_id: string | null;
+  accion: string;
+  datos_antes: unknown;
+  datos_despues: unknown;
+  ip: string | null;
+  usuario: string | null;
+}
+
+export interface PaginaAuditoria extends Pagina<EventoAuditoria> {
+  entidades: string[];
 }

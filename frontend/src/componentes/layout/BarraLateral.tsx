@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { PanelLeftClose, PanelLeftOpen, Scale, Stethoscope } from 'lucide-react';
 import { useSesion } from '../../modulos/auth/ContextoSesion';
 import { Boton } from '../ui/Boton';
-import { NAVEGACION, NAVEGACION_PENDIENTE } from './navegacion';
+import { NAVEGACION, NAVEGACION_ADMINISTRACION, NAVEGACION_PENDIENTE, type ItemNavegacion } from './navegacion';
 
 /**
  * Barra lateral: la navegación principal.
@@ -29,6 +29,23 @@ export function BarraLateral({
 }: Props) {
   const { puede } = useSesion();
   const visibles = NAVEGACION.filter((item) => !item.permiso || puede(item.permiso));
+  const administracion = NAVEGACION_ADMINISTRACION.filter((item) => !item.permiso || puede(item.permiso));
+
+  const enlace = (item: ItemNavegacion) => (
+    <NavLink
+      key={item.ruta}
+      to={item.ruta}
+      // `end` solo en Inicio: sin eso, "/" quedaría activo en todas las
+      // rutas, porque toda ruta empieza con barra.
+      end={item.ruta === '/'}
+      onClick={alCerrarEnMovil}
+      title={contraida ? item.texto : undefined}
+      className={({ isActive }) => `navegacion__enlace${isActive ? ' navegacion__enlace--activo' : ''}`}
+    >
+      <item.icono size={18} aria-hidden />
+      <span className="navegacion__texto">{item.texto}</span>
+    </NavLink>
+  );
 
   return (
     <aside
@@ -46,25 +63,14 @@ export function BarraLateral({
       </NavLink>
 
       <nav className="barra-lateral__navegacion">
-        <div className="barra-lateral__grupo">
-          {visibles.map((item) => (
-            <NavLink
-              key={item.ruta}
-              to={item.ruta}
-              // `end` solo en Inicio: sin eso, "/" quedaría activo en todas las
-              // rutas, porque toda ruta empieza con barra.
-              end={item.ruta === '/'}
-              onClick={alCerrarEnMovil}
-              title={contraida ? item.texto : undefined}
-              className={({ isActive }) =>
-                `navegacion__enlace${isActive ? ' navegacion__enlace--activo' : ''}`
-              }
-            >
-              <item.icono size={18} aria-hidden />
-              <span className="navegacion__texto">{item.texto}</span>
-            </NavLink>
-          ))}
-        </div>
+        <div className="barra-lateral__grupo">{visibles.map(enlace)}</div>
+
+        {administracion.length > 0 && (
+          <div className="barra-lateral__grupo">
+            <p className="barra-lateral__titulo-grupo">Administración</p>
+            {administracion.map(enlace)}
+          </div>
+        )}
 
         <div className="barra-lateral__grupo">
           <p className="barra-lateral__titulo-grupo">En desarrollo</p>

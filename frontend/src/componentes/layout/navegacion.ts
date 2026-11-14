@@ -2,11 +2,13 @@ import {
   Banknote,
   BarChart3,
   CalendarClock,
+  CalendarOff,
   FileText,
   FolderOpen,
   LayoutDashboard,
   ListChecks,
-  Settings,
+  ScrollText,
+  UserCog,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -37,6 +39,19 @@ export const NAVEGACION: ItemNavegacion[] = [
   { ruta: '/expedientes', texto: 'Expedientes', icono: FolderOpen, permiso: 'causa.ver', prefijo: true },
   { ruta: '/clientes', texto: 'Clientes y partes', icono: Users, permiso: 'persona.ver', prefijo: true },
   { ruta: '/agenda', texto: 'Agenda y plazos', icono: CalendarClock, permiso: 'plazo.ver', prefijo: true },
+  { ruta: '/tareas', texto: 'Tareas', icono: ListChecks, permiso: 'tarea.ver' },
+  { ruta: '/documentos', texto: 'Documentos', icono: FileText, permiso: 'documento.ver' },
+  { ruta: '/costas', texto: 'Honorarios y costas', icono: Banknote, permiso: 'costa.ver' },
+];
+
+/**
+ * Administración del estudio. Va en su propio grupo de la barra lateral: se usa
+ * poco y no tiene que competir con las secciones del día a día.
+ */
+export const NAVEGACION_ADMINISTRACION: ItemNavegacion[] = [
+  { ruta: '/calendario', texto: 'Calendario judicial', icono: CalendarOff, permiso: 'calendario.ver' },
+  { ruta: '/usuarios', texto: 'Usuarios y permisos', icono: UserCog, permiso: 'usuario.ver' },
+  { ruta: '/auditoria', texto: 'Auditoría', icono: ScrollText, permiso: 'auditoria.ver' },
 ];
 
 /**
@@ -48,18 +63,16 @@ export const NAVEGACION: ItemNavegacion[] = [
  * no existe. Un ítem inerte y rotulado como en desarrollo no engaña a nadie.
  */
 export const NAVEGACION_PENDIENTE: { texto: string; icono: LucideIcon }[] = [
-  { texto: 'Documentos', icono: FileText },
-  { texto: 'Tareas', icono: ListChecks },
-  { texto: 'Honorarios y costas', icono: Banknote },
   { texto: 'Informes', icono: BarChart3 },
-  { texto: 'Configuración', icono: Settings },
 ];
 
 /** Título de la sección actual, para la barra superior y el <title> del documento. */
 export function tituloDeRuta(ruta: string): string {
   if (ruta === '/') return 'Inicio';
 
-  const item = NAVEGACION.find((entrada) => entrada.ruta !== '/' && ruta.startsWith(entrada.ruta));
+  const item = [...NAVEGACION, ...NAVEGACION_ADMINISTRACION].find(
+    (entrada) => entrada.ruta !== '/' && ruta.startsWith(entrada.ruta),
+  );
   if (item) return item.texto;
   if (ruta.startsWith('/diagnostico')) return 'Diagnóstico del sistema';
   return 'SistemaLegal';

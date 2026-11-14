@@ -620,3 +620,71 @@
     padding-right: var(--esp-4);
   }
 }
+
+/* --- Bandeja de avisos (campana de la barra superior) ------------------------ */
+
+.campana__contador {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  margin: 0;
+  line-height: 16px;
+  min-width: 16px;
+  text-align: center;
+  background: var(--peligro);
+  color: #fff;
+}
+
+.menu--bandeja {
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(480px, 70vh);
+  overflow-y: auto;
+}
+
+.menu__item--aviso {
+  align-items: flex-start;
+  height: auto;
+  padding-block: var(--esp-2);
+}
+
+.menu__item--aviso[data-leida='no'] {
+  background: var(--superficie-sutil);
+}
+
+.menu__item--aviso[data-leida='si'] {
+  opacity: 0.72;
+}
+
+/* Vista previa del texto extraído de un PDF: monoespaciada no, legible sí. */
+.texto-extraido {
+  white-space: pre-wrap;
+  max-height: 60vh;
+  overflow-y: auto;
+  font-size: var(--texto-sm);
+  line-height: 1.6;
+  padding: var(--esp-4);
+  background: var(--superficie-sutil);
+  border-radius: var(--radio-md);
+}
+
+.zona-carga {
+  display: grid;
+  place-items: center;
+  gap: var(--esp-2);
+  padding: var(--esp-6);
+  border: 1.5px dashed var(--borde);
+  border-radius: var(--radio-md);
+  text-align: center;
+  cursor: pointer;
+}
+
+.zona-carga[data-arrastrando='si'] {
+  border-color: var(--marca-500, var(--borde));
+  background: var(--superficie-sutil);
+}
+
+.totales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--esp-4);
+}

@@ -10,7 +10,15 @@ import { rutasPlazos, rutasPlazosDeCausa } from './modulos/plazos/rutas';
 import { rutasCatalogos } from './modulos/catalogos/rutas';
 import { rutasPanel } from './modulos/panel/rutas';
 import { rutasPersonas } from './modulos/personas/rutas';
+import { rutasTareas } from './modulos/tareas/rutas';
+import { rutasCalendario } from './modulos/calendario/rutas';
+import { rutasAlertas, rutasNotificaciones } from './modulos/alertas/rutas';
+import { rutasCuenta, rutasUsuarios } from './modulos/usuarios/rutas';
+import { rutasCostas, rutasCostasDeCausa } from './modulos/costas/rutas';
+import { rutasDocumentos, rutasDocumentosDeCausa } from './modulos/documentos/rutas';
+import { rutasAuditoria } from './modulos/auditoria/rutas';
 import { manejadorErrores, noEncontrado } from './middlewares/manejador-errores';
+import { ErrorAutorizacion } from './comun/errores';
 
 /**
  * Construcción de la app Express, separada del arranque del servidor para
@@ -22,8 +30,9 @@ export function crearApp(): Express {
 
   // Render y Vercel ponen un proxy delante: sin esto, req.ip sería siempre la
   // del proxy y el límite de intentos de login se aplicaría a todo el mundo
-  // junto. Se confía en un solo salto, no en toda la cadena de X-Forwarded-For.
-  app.set('trust proxy', 1);
+  // junto. Se confía en los saltos declarados (1 en Render, 2 con el proxy de
+  // Vercel delante), no en toda la cadena de X-Forwarded-For.
+  app.set('trust proxy', config.saltosProxy);
 
   app.use(
     cors({
@@ -31,7 +40,14 @@ export function crearApp(): Express {
         // Sin cabecera Origin: curl, health checks de Render, pruebas. Se permite.
         if (!origen) return callback(null, true);
         if (origenAutorizado(origen)) return callback(null, true);
-        return callback(new Error(`Origen no autorizado: ${origen}`));
+        // 403 con un mensaje que se entiende en la pantalla de acceso: antes
+        // era un 500 genérico y no había forma de saber que el problema era
+        // la dirección desde la que se abrió la aplicación.
+        return callback(
+          new ErrorAutorizacion(
+            `La API no acepta pedidos desde ${origen}. Abrí la aplicación desde la dirección configurada o agregala a CORS_ORIGIN.`,
+          ),
+        );
       },
       // El refresh token viaja en cookie: sin esto el navegador no la manda.
       credentials: true,
@@ -74,9 +90,20 @@ export function crearApp(): Express {
   // Los plazos de un expediente cuelgan de el, pero viven en su propio modulo:
   // el motor de computo no tiene por que estar dentro de causas.
   app.use('/api/causas/:id', rutasPlazosDeCausa);
+  app.use('/api/causas/:id', rutasCostasDeCausa);
+  app.use('/api/causas/:id', rutasDocumentosDeCausa);
   app.use('/api/plazos', rutasPlazos);
   app.use('/api/personas', rutasPersonas);
   app.use('/api/catalogos', rutasCatalogos);
+  app.use('/api/tareas', rutasTareas);
+  app.use('/api/calendario', rutasCalendario);
+  app.use('/api/alertas', rutasAlertas);
+  app.use('/api/notificaciones', rutasNotificaciones);
+  app.use('/api/usuarios', rutasUsuarios);
+  app.use('/api/cuenta', rutasCuenta);
+  app.use('/api/costas', rutasCostas);
+  app.use('/api/documentos', rutasDocumentos);
+  app.use('/api/auditoria', rutasAuditoria);
 
   app.use(noEncontrado);
   app.use(manejadorErrores);

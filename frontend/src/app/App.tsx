@@ -12,6 +12,12 @@ import { PaginaClientes } from '../modulos/personas/PaginaClientes';
 import { PaginaAgenda } from '../modulos/agenda/PaginaAgenda';
 import { PaginaCliente } from '../modulos/personas/PaginaCliente';
 import { PaginaDiagnostico } from '../modulos/diagnostico/PaginaDiagnostico';
+import { PaginaTareas } from '../modulos/tareas/PaginaTareas';
+import { PaginaCalendario } from '../modulos/calendario/PaginaCalendario';
+import { PaginaUsuarios } from '../modulos/usuarios/PaginaUsuarios';
+import { PaginaCostas } from '../modulos/costas/PaginaCostas';
+import { PaginaDocumentos } from '../modulos/documentos/PaginaDocumentos';
+import { PaginaAuditoria } from '../modulos/auditoria/PaginaAuditoria';
 import { ErrorApi } from '../servicios/api';
 
 /**
@@ -52,6 +58,12 @@ export function App() {
                   <Route path="clientes" element={<PaginaClientes />} />
                   <Route path="clientes/:id" element={<PaginaCliente />} />
                   <Route path="agenda" element={<PaginaAgenda />} />
+                  <Route path="tareas" element={<PaginaTareas />} />
+                  <Route path="documentos" element={<PaginaDocumentos />} />
+                  <Route path="costas" element={<PaginaCostas />} />
+                  <Route path="calendario" element={<PaginaCalendario />} />
+                  <Route path="usuarios" element={<PaginaUsuarios />} />
+                  <Route path="auditoria" element={<PaginaAuditoria />} />
                   <Route path="diagnostico" element={<PaginaDiagnostico />} />
                 </Route>
               </Route>

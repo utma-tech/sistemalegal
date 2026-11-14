@@ -15,7 +15,15 @@ import type { RespuestaSesion } from '../tipos/api';
  * cookie httpOnly que el navegador adjunta solo.
  */
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+/**
+ * Origen de la API.
+ *
+ * En producción, por defecto, el mismo origen del frontend: Vercel reenvía
+ * `/api/*` a Render (frontend/vercel.json), de modo que la cookie del refresh
+ * token es de primera parte y ningún navegador la bloquea por ser de terceros.
+ * `VITE_API_URL` permite apuntar a otra API, sin barra final.
+ */
+const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:4000');
 
 /**
  * El plan gratuito de Render duerme el servicio tras unos minutos de
@@ -111,6 +119,10 @@ interface Opciones {
   reintentada?: boolean;
   /** Las rutas de sesión no deben disparar la renovación automática. */
   sinRenovar?: boolean;
+  /** Cuerpo binario (un archivo). Viaja tal cual, sin serializar a JSON. */
+  archivo?: Blob;
+  /** Devuelve el cuerpo como Blob (descargas) en lugar de leerlo como JSON. */
+  binario?: boolean;
 }
 
 async function pedir<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
@@ -119,6 +131,7 @@ async function pedir<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
 
   const cabeceras: Record<string, string> = {};
   if (opciones.cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json';
+  if (opciones.archivo) cabeceras['Content-Type'] = opciones.archivo.type || 'application/octet-stream';
   if (accessToken) cabeceras.Authorization = `Bearer ${accessToken}`;
 
   let respuesta: Response;
@@ -126,7 +139,7 @@ async function pedir<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
     respuesta = await fetch(`${BASE}${ruta}`, {
       method: opciones.metodo ?? 'GET',
       headers: cabeceras,
-      body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
+      body: opciones.archivo ?? (opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo)),
       // Imprescindible para que viaje la cookie del refresh token.
       credentials: 'include',
       signal: control.signal,
@@ -155,6 +168,7 @@ async function pedir<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
   }
 
   if (respuesta.status === 204) return undefined as T;
+  if (opciones.binario && respuesta.ok) return (await respuesta.blob()) as T;
 
   const cuerpo = await respuesta.json().catch(() => undefined);
 
@@ -188,6 +202,10 @@ export const api = {
   /** PUT: reemplaza el recurso completo, que es como actualiza la API. */
   reemplazar: <T>(ruta: string, cuerpo: unknown) => pedir<T>(ruta, { metodo: 'PUT', cuerpo }),
   eliminar: <T>(ruta: string) => pedir<T>(ruta, { metodo: 'DELETE' }),
+  /** Sube un archivo como cuerpo binario; los metadatos van en la query string de la ruta. */
+  subir: <T>(ruta: string, archivo: Blob) => pedir<T>(ruta, { metodo: 'POST', archivo }),
+  /** Descarga con la sesión y devuelve el archivo como Blob. */
+  descargar: (ruta: string) => pedir<Blob>(ruta, { binario: true }),
 
   /** Las rutas de sesión no pasan por la renovación automática. */
   sesion: {
