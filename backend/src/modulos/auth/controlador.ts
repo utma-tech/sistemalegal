@@ -20,11 +20,13 @@ function opcionesCookie(expira: Date): CookieOptions {
   const enProduccion = config.entorno === 'production';
   return {
     httpOnly: true,
-    // En producción el frontend (Vercel) y la API (Render) están en dominios
-    // distintos, así que la cookie tiene que ser SameSite=None, y eso exige
-    // Secure. En local ambos son localhost: alcanza con Lax sobre http.
+    // En producción el navegador le habla a Vercel, que reenvía /api a Render
+    // (frontend/vercel.json): la cookie es de primera parte y alcanza con Lax,
+    // que además frena el CSRF. Si la API se publicara en otro dominio sin el
+    // proxy, COOKIE_SAMESITE=none la deja viajar entre sitios (exige Secure, y
+    // Safari la descarta igual). En local ambos son localhost: Lax sobre http.
     secure: enProduccion,
-    sameSite: enProduccion ? 'none' : 'lax',
+    sameSite: enProduccion ? config.cookieSameSite : 'lax',
     // La cookie solo hace falta en los endpoints que la consumen; no se manda
     // en cada petición a /api.
     path: '/api/auth',

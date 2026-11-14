@@ -96,6 +96,30 @@ export const config = {
   intentosLogin: entero('INTENTOS_LOGIN', 10),
   minutosVentanaLogin: entero('MINUTOS_VENTANA_LOGIN', 15),
 
+  /**
+   * SameSite de la cookie del refresh token en producción. `lax` cuando el
+   * frontend reenvía /api con el proxy de Vercel (la cookie es de primera
+   * parte); `none` solo si la API se consume desde otro sitio.
+   */
+  cookieSameSite: process.env.COOKIE_SAMESITE === 'none' ? ('none' as const) : ('lax' as const),
+
+  /**
+   * Cuántos proxies hay delante de Express. En Render es 1 (su balanceador);
+   * con el proxy de Vercel delante son 2. Si el número queda corto, req.ip es
+   * la IP de Vercel y el límite de intentos de login castiga a todos juntos.
+   */
+  saltosProxy: entero('SALTOS_PROXY', 1),
+
+  /** Tamaño máximo de un archivo subido, en megabytes. */
+  megasMaximoArchivo: entero('MEGAS_MAXIMO_ARCHIVO', 10),
+
+  /**
+   * URL del microservicio de extracción de texto de PDF. Si falta, los PDF se
+   * guardan igual y su texto queda pendiente: la extracción es una mejora, no
+   * una condición para subir un documento.
+   */
+  urlServicioPdf: process.env.PDF_SERVICE_URL?.replace(/\/+$/, '') || undefined,
+
   /** Orígenes autorizados a consumir la API, separados por coma. */
   origenesPermitidos: lista('CORS_ORIGIN'),
 
@@ -114,7 +138,23 @@ const DOMINIO_VERCEL = '.vercel.app';
 
 export function origenAutorizado(origen: string): boolean {
   if (config.origenesPermitidos.includes(origen)) return true;
+  if (config.entorno === 'development' && esLocal(origen)) return true;
   return esPreviewDeVercel(origen);
+}
+
+/**
+ * En desarrollo, cualquier puerto de esta misma máquina. Vite cambia de puerto
+ * si el suyo está ocupado y la gente abre `127.0.0.1` tanto como `localhost`:
+ * exigir la coincidencia exacta solo producía logins rotos sin explicación.
+ * Nunca aplica en producción.
+ */
+function esLocal(origen: string): boolean {
+  try {
+    const url = new URL(origen);
+    return url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+  } catch {
+    return false;
+  }
 }
 
 /**
