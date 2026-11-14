@@ -11,11 +11,11 @@ los pasos.
 ```
 Navegador ──▶ Vercel  (frontend/: la SPA, y /api/* reenviado a Render)
                  │
-                 └─▶ API          Render   sistemalegal-api  (backend/, render.yaml)
+                 └─▶ API          Render   sistemalegal-utma-api  (backend/, render.yaml)
                         │
                         ├─▶ PostgreSQL       Supabase  (esquema y seeds aplicados con psql)
                         ├─▶ Archivos         Supabase Storage, bucket privado «documentos»
-                        └─▶ Extracción PDF   Render   sistemalegal-pdf  (pdf-service/, Python)
+                        └─▶ Extracción PDF   Render   sistemalegal-utma-pdf  (pdf-service/, Python)
 ```
 
 El navegador **solo habla con el dominio de Vercel**: `frontend/vercel.json`
@@ -71,6 +71,12 @@ contraseña `Demo1234!`).
 ---
 
 ## 3. Producción
+
+> Esta guía describe el entorno de **UTMA** (`utma-tech/sistemalegal`), con
+> servicios `sistemalegal-utma-*`. El servicio `sistemalegal-api` existente
+> despliega desde `martinmaine/sistemalegal` y no se toca. Estado actual de cada
+> servicio: [`estado-despliegues.md`](estado-despliegues.md); relación entre
+> repositorios: [`flujo-repositorios.md`](flujo-repositorios.md).
 
 El orden importa: Render necesita la cadena de Supabase, y Vercel necesita la URL de
 Render. El último paso vuelve sobre Render porque CORS necesita el dominio de
@@ -134,8 +140,8 @@ tarea usa el suyo.
 
 1. Crear cuenta en [render.com](https://render.com) con GitHub.
 2. **New > Blueprint**, elegir el repositorio. Render lee
-   [`render.yaml`](../render.yaml) y propone **dos** servicios: `sistemalegal-api`
-   (Node) y `sistemalegal-pdf` (Python), con el *root directory*, el *build command*
+   [`render.yaml`](../render.yaml) y propone **dos** servicios: `sistemalegal-utma-api`
+   (Node) y `sistemalegal-utma-pdf` (Python), con el *root directory*, el *build command*
    y el *health check* ya resueltos.
 3. Cargar las variables que el blueprint marca como `sync: false`:
 
@@ -144,7 +150,7 @@ tarea usa el suyo.
    | api | `DATABASE_URL` | la cadena del **pooler en modo transacción** (puerto `6543`), con `sslmode=require` |
    | api | `CORS_ORIGIN` | el dominio de Vercel (`https://sistemalegal.vercel.app`); se confirma en el paso 3.4 |
    | api | `JWT_SECRET` | un secreto aleatorio de al menos 32 caracteres (comando abajo). **Sin él el servicio no arranca.** |
-   | api | `PDF_SERVICE_URL` | la URL pública de `sistemalegal-pdf`, sin barra final |
+   | api | `PDF_SERVICE_URL` | la URL pública de `sistemalegal-utma-pdf`, sin barra final |
    | api y pdf | `PDF_SERVICE_TOKEN` | **el mismo** secreto aleatorio en los dos servicios |
    | api | `SUPABASE_URL` | `https://<ref>.supabase.co` (Settings → API) |
    | api | `SUPABASE_SERVICE_KEY` | la clave `service_role` (Settings → API). Solo vive en Render: nunca en el frontend. |
@@ -156,7 +162,7 @@ tarea usa el suyo.
    node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
    ```
 
-4. Esperar el despliegue y comprobar `https://sistemalegal-api.onrender.com/health`.
+4. Esperar el despliegue y comprobar `https://sistemalegal-utma-api.onrender.com/health`.
    Tiene que responder `"base": "conectada"`. Si dice `sin-conexion`, el campo
    `detalleBase` lo aclara. El error más probable es haber pegado la conexión
    directa en vez de la del pooler: ahí el detalle habla de red o de host
@@ -183,7 +189,7 @@ local: sirve para desarrollo, no para Render.
 4. El framework lo detecta solo (Vite). **No** hace falta `VITE_API_URL`: en
    producción la SPA le habla a su propio dominio y
    [`frontend/vercel.json`](../frontend/vercel.json) reenvía `/api/*` a Render.
-   Si el servicio de Render quedó con otro nombre que `sistemalegal-api`, hay que
+   Si el servicio de Render quedó con otro nombre que `sistemalegal-utma-api`, hay que
    corregir la URL de destino en ese archivo (Vercel no admite variables ahí).
    Si se define `VITE_API_URL`, se saltea el proxy y vuelve el problema de la cookie.
 
@@ -248,7 +254,7 @@ sin valores reales.
 
 ```bash
 curl https://sistemalegal-henna.vercel.app/health     # por el proxy: estado ok, base conectada
-curl https://sistemalegal-pdf.onrender.com/health      # microservicio de PDF
+curl https://sistemalegal-utma-pdf.onrender.com/health      # microservicio de PDF
 ```
 
 Y abrir el dominio de Vercel, entrar, **recargar la página** (si la sesión
