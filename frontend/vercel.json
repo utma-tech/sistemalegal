@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/:ruta*", "destination": "https://sistemalegal-api.onrender.com/api/:ruta*" },
-    { "source": "/health", "destination": "https://sistemalegal-api.onrender.com/health" },
+    { "source": "/api/:ruta*", "destination": "https://sistemalegal-utma-api.onrender.com/api/:ruta*" },
+    { "source": "/health", "destination": "https://sistemalegal-utma-api.onrender.com/health" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
