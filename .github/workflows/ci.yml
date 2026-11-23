@@ -38,7 +38,7 @@ jobs:
           psql -h localhost -U postgres -d sistemalegal -v ON_ERROR_STOP=1 -f database/seed/001_catalogos.sql
           psql -h localhost -U postgres -d sistemalegal -v ON_ERROR_STOP=1 -f database/seed/002_datos_demo.sql
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
