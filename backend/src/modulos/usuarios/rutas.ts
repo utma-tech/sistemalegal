@@ -1,4 +1,6 @@
 import { Router, type Request, type Response } from 'express';
+import rateLimit from 'express-rate-limit';
+import { config } from '../../config';
 import { requierePermiso } from '../../middlewares/autenticacion';
 import { validarCuerpo } from '../../middlewares/validacion';
 import { idDeRuta } from '../../comun/ruta';
@@ -85,7 +87,27 @@ rutasUsuarios.post(
 
 export const rutasCuenta = Router();
 
-rutasCuenta.post('/password', validarCuerpo(esquemaCambioPropio), async (req: Request, res: Response) => {
+/**
+ * Intentos fallidos de cambio de contraseña, por usuario.
+ *
+ * El formulario confirma la contraseña actual: sin tope, quien robara un
+ * access token (15 minutos de vida) podría usarlo para adivinarla y quedarse
+ * con la cuenta. La clave es el usuario de la sesión, que no se falsifica.
+ */
+const limiteCambioPassword = rateLimit({
+  windowMs: config.minutosVentanaLogin * 60_000,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => `password:${req.sesion!.id}`,
+  message: {
+    error: 'Demasiados intentos fallidos. Esperá unos minutos y volvé a probar.',
+    codigo: 'DEMASIADOS_INTENTOS',
+  },
+});
+
+rutasCuenta.post('/password', limiteCambioPassword, validarCuerpo(esquemaCambioPropio), async (req: Request, res: Response) => {
   const { actual, nueva } = req.body as { actual: string; nueva: string };
   await servicio.cambiarPasswordPropia(req.sesion!.id, actual, nueva);
   await registrar(req, {

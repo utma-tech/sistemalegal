@@ -16,9 +16,11 @@ extracción se reintenta desde la pantalla.
 
 | Variable | Por defecto | Uso |
 |---|---|---|
-| `PDF_SERVICE_TOKEN` | vacío | Token compartido con el backend (cabecera `X-Servicio-Token`). Obligatorio en producción. |
-| `MEGAS_MAXIMO_ARCHIVO` | `10` | Tamaño máximo aceptado. |
+| `PDF_SERVICE_TOKEN` | vacío | Token compartido con el backend (cabecera `X-Servicio-Token`). Sin él, `/extraer` responde 503. |
+| `PDF_SIN_TOKEN` | vacío | `1` permite trabajar sin token. Solo para desarrollo (lo pone `docker-compose.yml`); nunca en Render. |
+| `MEGAS_MAXIMO_ARCHIVO` | `10` | Tamaño máximo aceptado. Se corta mientras se lee el cuerpo, no después. |
 | `PAGINAS_MAXIMO` | `500` | Páginas máximas por documento. |
+| `SEGUNDOS_MAXIMO_EXTRACCION` | `60` | Tiempo máximo por PDF; pasado eso responde 504. |
 
 ## Local
 

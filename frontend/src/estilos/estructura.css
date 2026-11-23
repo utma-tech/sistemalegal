@@ -18,7 +18,8 @@
 
 /* ---------------------------------------------------------------------------
    Barra lateral
-   Clara, no oscura: es la dirección visual elegida para el producto.
+   Azul petróleo con texto claro: es la identidad del producto y ancla la
+   estructura, para que el contenido, sobre blanco y gris hielo, se lea primero.
    --------------------------------------------------------------------------- */
 .barra-lateral {
   position: sticky;
@@ -27,8 +28,12 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--superficie);
-  border-right: 1px solid var(--borde);
+  background: var(--marca-profundo);
+  color: var(--sobre-profundo);
+}
+
+.barra-lateral :focus-visible {
+  outline-color: var(--dorado);
 }
 
 .barra-lateral__marca {
@@ -38,7 +43,8 @@
   height: var(--alto-barra-superior);
   padding: 0 var(--esp-4);
   flex-shrink: 0;
-  color: var(--texto);
+  color: var(--sobre-profundo);
+  border-bottom: 1px solid var(--linea-sobre-profundo);
   overflow: hidden;
 }
 
@@ -46,26 +52,29 @@
   text-decoration: none;
 }
 
+/* El dorado aparece acá y en el ítem activo: dos detalles, nada más. */
 .barra-lateral__logo {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radio-md);
-  background: var(--marca-600);
-  color: var(--texto-sobre-marca);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radio);
+  background: rgba(192, 154, 97, 0.14);
+  color: var(--dorado);
+  box-shadow: inset 0 0 0 1px rgba(192, 154, 97, 0.32);
   flex-shrink: 0;
 }
 
 .barra-lateral__identidad {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
 .barra-lateral__nombre {
-  font-family: var(--fuente-titulos);
   font-size: var(--texto-md);
   font-weight: var(--peso-semi);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -74,7 +83,7 @@
 
 .barra-lateral__estudio {
   font-size: var(--texto-xs);
-  color: var(--texto-tenue);
+  color: var(--sobre-profundo-tenue);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -83,57 +92,96 @@
 .barra-lateral__navegacion {
   flex: 1;
   overflow-y: auto;
-  padding: var(--esp-3) var(--esp-3) var(--esp-5);
+  padding: var(--esp-3) var(--esp-3) var(--esp-4);
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 }
 
+.barra-lateral__navegacion::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  background-clip: content-box;
+}
+
+/* Los grupos se separan con un filete apenas visible, no con aire solo: a
+   simple vista tiene que quedar claro dónde termina el día a día. */
 .barra-lateral__grupo + .barra-lateral__grupo {
-  margin-top: var(--esp-5);
+  margin-top: var(--esp-3);
+  padding-top: var(--esp-3);
+  border-top: 1px solid var(--linea-sobre-profundo);
 }
 
 .barra-lateral__titulo-grupo {
-  padding: 0 var(--esp-3) var(--esp-2);
+  padding: var(--esp-1) var(--esp-3) var(--esp-2);
   font-size: var(--texto-xs);
-  font-weight: var(--peso-semi);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--neutro-400);
+  font-weight: var(--peso-medio);
+  letter-spacing: 0.02em;
+  color: var(--sobre-profundo-tenue);
 }
 
 .navegacion__enlace {
   display: flex;
   align-items: center;
-  gap: var(--esp-3);
-  padding: var(--esp-2) var(--esp-3);
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
   margin-bottom: 2px;
   border-radius: var(--radio);
   font-size: var(--texto-base);
   font-weight: var(--peso-medio);
-  color: var(--texto-suave);
+  color: var(--sobre-profundo-suave);
   transition: background-color var(--transicion-rapida), color var(--transicion-rapida);
-}
-
-.navegacion__enlace:hover {
-  background: var(--neutro-100);
-  color: var(--texto);
-  text-decoration: none;
-}
-
-/* La sección activa se marca en verde petróleo sólido: es la señal de
-   ubicación más importante de la interfaz. */
-.navegacion__enlace--activo,
-.navegacion__enlace--activo:hover {
-  background: var(--marca-600);
-  color: var(--texto-sobre-marca);
 }
 
 .navegacion__enlace svg {
   flex-shrink: 0;
+  color: var(--sobre-profundo-tenue);
+  transition: color var(--transicion-rapida);
+}
+
+.navegacion__enlace:hover {
+  background: var(--realce-sobre-profundo);
+  color: var(--sobre-profundo);
+  text-decoration: none;
+}
+
+.navegacion__enlace:hover svg {
+  color: var(--sobre-profundo-suave);
+}
+
+/* Activo: fondo claro sobre el petróleo, texto blanco y el icono en dorado.
+   Es la señal de ubicación más importante de la interfaz. */
+.navegacion__enlace--activo,
+.navegacion__enlace--activo:hover {
+  background: var(--activo-sobre-profundo);
+  color: var(--sobre-profundo);
+}
+
+.navegacion__enlace--activo svg,
+.navegacion__enlace--activo:hover svg {
+  color: var(--dorado);
+}
+
+.navegacion__enlace--inactivo,
+.navegacion__enlace--inactivo:hover {
+  background: none;
+  color: var(--sobre-profundo-tenue);
+  cursor: default;
+  opacity: 0.7;
 }
 
 .navegacion__texto {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.navegacion__pronto {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--linea-sobre-profundo);
+  font-size: 0.6875rem;
+  color: var(--sobre-profundo-tenue);
 }
 
 .navegacion__contador {
@@ -146,30 +194,44 @@
   font-weight: var(--peso-semi);
 }
 
-.navegacion__enlace--activo .navegacion__contador {
-  background: rgba(255, 255, 255, 0.2);
-  color: var(--texto-sobre-marca);
-}
-
 .barra-lateral__pie {
-  padding: var(--esp-3);
-  border-top: 1px solid var(--borde);
+  padding: var(--esp-2) var(--esp-3) var(--esp-3);
+  border-top: 1px solid var(--linea-sobre-profundo);
   flex-shrink: 0;
 }
 
+.barra-lateral__pie-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-2);
+  margin-top: var(--esp-1);
+}
+
+.barra-lateral__pie .boton--sutil {
+  color: var(--sobre-profundo-tenue);
+}
+
+.barra-lateral__pie .boton--sutil:hover:not(:disabled) {
+  background: var(--realce-sobre-profundo);
+  color: var(--sobre-profundo);
+}
+
 .barra-lateral__creditos {
-  padding: var(--esp-2) var(--esp-3) 0;
+  padding-left: 10px;
+  min-width: 0;
   font-size: var(--texto-xs);
-  color: var(--neutro-400);
+  color: var(--sobre-profundo-tenue);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* --- Barra lateral contraída ----------------------------------------------
-   Solo iconos. El nombre viaja en el title y en aria-label, así que el enlace
-   sigue siendo comprensible para un lector de pantalla. */
+   Solo iconos. El nombre aparece en un tooltip (mouse y teclado) y viaja en
+   aria-label, así que el enlace sigue siendo comprensible. */
 .shell--contraida .navegacion__texto,
+.shell--contraida .navegacion__pronto,
 .shell--contraida .barra-lateral__identidad,
 .shell--contraida .barra-lateral__titulo-grupo,
 .shell--contraida .barra-lateral__creditos,
@@ -179,12 +241,43 @@
 
 .shell--contraida .navegacion__enlace {
   justify-content: center;
-  padding: var(--esp-2);
+  padding: 0;
 }
 
 .shell--contraida .barra-lateral__marca {
   justify-content: center;
   padding: 0;
+}
+
+.shell--contraida .barra-lateral__pie-fila {
+  justify-content: center;
+}
+
+/* Tooltip — se usa en la barra contraída. Posición fija, calculada al vuelo. */
+.tooltip {
+  position: fixed;
+  z-index: var(--capa-aviso);
+  padding: 5px var(--esp-2);
+  border-radius: var(--radio-sm);
+  background: var(--neutro-900);
+  color: #ffffff;
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: var(--sombra-md);
+  pointer-events: none;
+  animation: tooltip-entra 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tooltip--derecha {
+  transform: translateY(-50%);
+}
+
+@keyframes tooltip-entra {
+  from {
+    opacity: 0;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -196,6 +289,8 @@
   min-width: 0;
 }
 
+/* Fija porque lleva la búsqueda y los avisos, que se usan desde cualquier
+   altura de la página. Fondo sólido: nada de transparencias detrás. */
 .barra-superior {
   position: sticky;
   top: 0;
@@ -205,34 +300,78 @@
   gap: var(--esp-4);
   height: var(--alto-barra-superior);
   padding: 0 var(--esp-6);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
+  background: var(--superficie);
   border-bottom: 1px solid var(--borde);
   flex-shrink: 0;
 }
 
 .barra-superior__contexto {
   min-width: 0;
+  flex-shrink: 1;
 }
 
 .barra-superior__titulo {
+  display: block;
   font-size: var(--texto-md);
   font-weight: var(--peso-semi);
+  letter-spacing: -0.01em;
+  color: var(--texto);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.barra-superior__titulo--enlace {
+  color: var(--texto-suave);
+  font-weight: var(--peso-medio);
+}
+
+.barra-superior__titulo--enlace:hover {
+  color: var(--texto);
+  text-decoration: none;
+}
+
 .barra-superior__busqueda {
   flex: 1;
-  max-width: 460px;
+  max-width: 440px;
   margin-left: auto;
+}
+
+.buscador-global {
+  width: 100%;
+  border-radius: var(--radio);
+}
+
+.buscador-global__campo {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding-left: var(--esp-8);
+  background: var(--fondo);
+  border-color: var(--borde);
+  color: var(--texto-tenue);
+  font-size: var(--texto-sm);
+  transition: border-color var(--transicion-rapida), background-color var(--transicion-rapida);
+}
+
+.buscador-global:hover .buscador-global__campo {
+  border-color: var(--borde-fuerte);
+  background: var(--superficie);
+}
+
+.buscador-global:focus-visible {
+  outline: none;
+}
+
+.buscador-global:focus-visible .buscador-global__campo {
+  border-color: var(--marca-500);
+  box-shadow: var(--anillo-foco);
 }
 
 .barra-superior__acciones {
   display: flex;
   align-items: center;
-  gap: var(--esp-2);
+  gap: var(--esp-1);
   margin-left: auto;
 }
 
@@ -246,12 +385,13 @@
   right: var(--esp-2);
   display: inline-flex;
   align-items: center;
-  padding: 1px var(--esp-2);
+  padding: 1px 6px;
   border: 1px solid var(--borde);
   border-radius: var(--radio-sm);
-  background: var(--neutro-50);
-  font-family: var(--fuente-mono);
-  font-size: var(--texto-xs);
+  background: var(--superficie);
+  font-family: var(--fuente);
+  font-size: 0.6875rem;
+  font-weight: var(--peso-medio);
   color: var(--texto-tenue);
   pointer-events: none;
 }
@@ -364,11 +504,14 @@
 
 .pagina__titulo {
   font-size: var(--texto-2xl);
+  font-weight: var(--peso-semi);
+  letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .pagina__descripcion {
   margin-top: var(--esp-1);
-  color: var(--texto-suave);
+  color: var(--texto-tenue);
 }
 
 .pagina__acciones {
@@ -397,26 +540,140 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Rejillas del panel
+   Rejillas
    --------------------------------------------------------------------------- */
-.rejilla-indicadores {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: var(--esp-4);
-}
-
-.rejilla-panel {
-  display: grid;
-  /* Dos columnas asimétricas: lo urgente (plazos) ocupa más que lo contextual. */
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: var(--esp-5);
-}
-
 .rejilla-detalle {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: var(--esp-5);
   align-items: start;
+}
+
+/* ---------------------------------------------------------------------------
+   Panel de inicio
+   Cuatro bandas de lectura: bienvenida, indicadores, prioridades (lo que hay
+   que hacer) y contexto (lo que pasó y lo que viene). Cada banda pesa menos
+   que la anterior.
+   --------------------------------------------------------------------------- */
+.bienvenida {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--esp-6);
+}
+
+.bienvenida__titulo {
+  font-size: var(--texto-2xl);
+  font-weight: var(--peso-semi);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.bienvenida__resumen {
+  margin-top: var(--esp-1);
+  color: var(--texto-suave);
+}
+
+.bienvenida__resumen strong {
+  font-weight: var(--peso-semi);
+  color: var(--texto);
+}
+
+.bienvenida__resumen .texto-peligro {
+  color: var(--peligro);
+}
+
+.bienvenida__fecha {
+  color: var(--texto-tenue);
+}
+
+.rejilla-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-8);
+}
+
+.seccion-panel + .seccion-panel {
+  margin-top: var(--esp-8);
+}
+
+.seccion-panel__titulo {
+  margin-bottom: var(--esp-3);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  color: var(--texto);
+}
+
+.rejilla-prioridades {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--esp-4);
+  align-items: start;
+}
+
+.rejilla-contexto {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--esp-4);
+  align-items: start;
+}
+
+/* Subgrupo dentro de una tarjeta: "Vencidos" y "Próximos" en la misma lista. */
+.subgrupo {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: var(--esp-3) var(--esp-5) var(--esp-2);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semi);
+  color: var(--texto-tenue);
+}
+
+.subgrupo + .lista,
+.subgrupo + .subgrupo__vacio {
+  border-top: 1px solid var(--borde);
+}
+
+.lista + .subgrupo,
+.subgrupo__vacio + .subgrupo {
+  border-top: 1px solid var(--borde);
+}
+
+.subgrupo--peligro {
+  color: var(--peligro);
+}
+
+.subgrupo__cantidad {
+  padding: 0 6px;
+  border-radius: var(--radio-pastilla);
+  background: var(--neutro-100);
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.subgrupo--peligro .subgrupo__cantidad {
+  background: var(--peligro-fondo);
+  color: var(--peligro);
+}
+
+.subgrupo__vacio {
+  padding: var(--esp-3) var(--esp-5) var(--esp-4);
+  font-size: var(--texto-sm);
+  color: var(--texto-tenue);
+}
+
+.subgrupo__vacio--suelto {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: var(--esp-4) var(--esp-5);
+}
+
+.pila--panel {
+  gap: var(--esp-4);
 }
 
 /* ---------------------------------------------------------------------------
@@ -450,8 +707,8 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radio-md);
-  background: var(--marca-600);
-  color: var(--texto-sobre-marca);
+  background: var(--marca-profundo);
+  color: var(--dorado);
 }
 
 .acceso__nombre {
@@ -482,9 +739,10 @@
    Adaptación a pantallas chicas
    ============================================================================= */
 
-/* Tablet: el panel pasa a una columna. */
+/* Tablet y notebook angosta: el panel y el detalle pasan a una columna. */
 @media (max-width: 1180px) {
-  .rejilla-panel,
+  .rejilla-prioridades,
+  .rejilla-contexto,
   .rejilla-detalle {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -515,21 +773,34 @@
     position: fixed;
     inset: 0;
     z-index: calc(var(--capa-barra-lateral) - 1);
-    background: rgba(20, 26, 25, 0.4);
+    background: var(--velo);
   }
 
   /* En el cajón siempre se ven los textos, aunque en escritorio esté contraída. */
   .shell--contraida .navegacion__texto,
-  .shell--contraida .barra-lateral__identidad,
+  .shell--contraida .navegacion__pronto,
   .shell--contraida .barra-lateral__titulo-grupo,
   .shell--contraida .barra-lateral__creditos,
   .shell--contraida .navegacion__contador {
-    display: initial;
+    display: block;
+  }
+
+  .shell--contraida .barra-lateral__identidad {
+    display: flex;
   }
 
   .shell--contraida .navegacion__enlace {
     justify-content: flex-start;
-    padding: var(--esp-2) var(--esp-3);
+    padding: 0 10px;
+  }
+
+  .shell--contraida .barra-lateral__pie-fila {
+    justify-content: space-between;
+  }
+
+  /* Contraer no tiene sentido dentro del cajón. */
+  .barra-lateral__contraer {
+    display: none;
   }
 
   .shell--contraida .barra-lateral__marca {
@@ -564,8 +835,45 @@
     margin-bottom: var(--esp-5);
   }
 
-  .pagina__titulo {
+  .pagina__titulo,
+  .bienvenida__titulo {
     font-size: var(--texto-xl);
+  }
+
+  .bienvenida {
+    margin-bottom: var(--esp-5);
+  }
+
+  .bienvenida .pagina__acciones,
+  .bienvenida .pagina__acciones .boton {
+    width: 100%;
+  }
+
+  .rejilla-indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: var(--esp-6);
+  }
+
+  .indicador {
+    padding: var(--esp-3) var(--esp-4);
+  }
+
+  .indicador__valor {
+    font-size: var(--texto-2xl);
+  }
+
+  .indicador__valor--largo {
+    font-size: var(--texto-xl);
+  }
+
+  .indicador:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .subgrupo,
+  .subgrupo__vacio {
+    padding-left: var(--esp-4);
+    padding-right: var(--esp-4);
   }
 
   .pagina__acciones {
@@ -611,6 +919,13 @@
   .lista__item {
     padding-left: var(--esp-4);
     padding-right: var(--esp-4);
+    /* El texto pasa primero y toma todo el ancho; fecha y estado van debajo.
+       Al lado, el título quedaba recortado a tres letras. */
+    flex-wrap: wrap;
+  }
+
+  .lista__item > .lista__cuerpo {
+    flex-basis: 100%;
   }
 
   .modal__cabecera,
@@ -687,4 +1002,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--esp-4);
+  padding-top: var(--esp-5);
+}
+
+/* La cifra que pide acción (lo que falta cobrar) es la única con el verde de
+   la marca; el resto acompaña en neutro. */
+.totales > div:last-child .indicador__valor {
+  color: var(--marca-700);
 }

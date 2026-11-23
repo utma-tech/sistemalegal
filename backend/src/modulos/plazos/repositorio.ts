@@ -1,5 +1,6 @@
 import { enTransaccion, obtenerPool } from '../../db';
 import { desplazamiento } from '../../comun/paginacion';
+import { sqlCausaEnAlcance } from '../../comun/alcance';
 import type { DiaInhabil, Suspension } from './computo';
 import type { FiltrosPlazo, OrdenPlazo, DatosCrearPlazo } from './esquemas';
 import type { PlazoDetalle, PlazoListado, SuspensionPlazo } from './tipos';
@@ -56,9 +57,16 @@ const COLUMNAS_ORDEN: Record<OrdenPlazo, string> = {
   caratula: 'c.caratula',
 };
 
-function condiciones(filtros: FiltrosPlazo): { sql: string; valores: unknown[] } {
+function condiciones(filtros: FiltrosPlazo, alcance: string | null): { sql: string; valores: unknown[] } {
   const partes: string[] = ['TRUE'];
   const valores: unknown[] = [];
+
+  // Alcance acotado: los plazos de sus expedientes y los que tiene a cargo.
+  if (alcance) {
+    valores.push(alcance);
+    const n = `$${valores.length}`;
+    partes.push(`(p.responsable_id = ${n}::uuid OR ${sqlCausaEnAlcance('p.causa_id', n)})`);
+  }
 
   if (filtros.desde) {
     valores.push(filtros.desde);
@@ -92,8 +100,8 @@ function condiciones(filtros: FiltrosPlazo): { sql: string; valores: unknown[] }
   return { sql: partes.join('\n     AND '), valores };
 }
 
-export async function listar(filtros: FiltrosPlazo): Promise<PlazoListado[]> {
-  const { sql: donde, valores } = condiciones(filtros);
+export async function listar(filtros: FiltrosPlazo, alcance: string | null): Promise<PlazoListado[]> {
+  const { sql: donde, valores } = condiciones(filtros, alcance);
   const direccion = filtros.direccion === 'asc' ? 'ASC' : 'DESC';
   valores.push(filtros.tamano, desplazamiento(filtros));
 
@@ -108,8 +116,8 @@ export async function listar(filtros: FiltrosPlazo): Promise<PlazoListado[]> {
   return rows;
 }
 
-export async function contar(filtros: FiltrosPlazo): Promise<number> {
-  const { sql: donde, valores } = condiciones(filtros);
+export async function contar(filtros: FiltrosPlazo, alcance: string | null): Promise<number> {
+  const { sql: donde, valores } = condiciones(filtros, alcance);
   const { rows } = await obtenerPool().query<{ total: string }>(
     `SELECT count(*) AS total
        FROM plazo p

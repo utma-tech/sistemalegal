@@ -1,5 +1,6 @@
 import { obtenerPool } from '../../db';
 import { desplazamiento } from '../../comun/paginacion';
+import { sqlCausaEnAlcance } from '../../comun/alcance';
 import type { DatosPersona, FiltrosPersona, OrdenPersona } from './esquemas';
 
 /**
@@ -155,7 +156,8 @@ export async function buscarPorId(id: string): Promise<PersonaDetalle | undefine
   return rows[0];
 }
 
-export async function causasDe(personaId: string): Promise<CausaDePersona[]> {
+/** @param alcance usuario acotado (comun/alcance.ts): solo se listan sus expedientes. */
+export async function causasDe(personaId: string, alcance: string | null): Promise<CausaDePersona[]> {
   const { rows } = await obtenerPool().query<CausaDePersona>(
     `SELECT c.id AS causa_id,
             c.caratula,
@@ -171,8 +173,9 @@ export async function causasDe(personaId: string): Promise<CausaDePersona[]> {
        JOIN estado_causa ec ON ec.id = c.estado_causa_id
        JOIN fuero f         ON f.id  = c.fuero_id
       WHERE pc.persona_id = $1
+        AND ${sqlCausaEnAlcance('c.id', '$2')}
       ORDER BY c.fecha_inicio DESC`,
-    [personaId],
+    [personaId, alcance],
   );
   return rows;
 }

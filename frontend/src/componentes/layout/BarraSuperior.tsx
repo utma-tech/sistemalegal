@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { KeyRound, LogOut, Menu, Search, UserRound } from 'lucide-react';
 import { useSesion } from '../../modulos/auth/ContextoSesion';
 import { iniciales } from '../../lib/formato';
 import { Boton } from '../ui/Boton';
 import { BandejaNotificaciones } from '../../modulos/alertas/BandejaNotificaciones';
 import { DialogoMiPassword } from '../../modulos/usuarios/DialogoMiPassword';
+import { rutaDeSeccion } from './navegacion';
 
 /**
  * Barra superior: contexto de la sección, búsqueda global y usuario.
@@ -23,6 +24,8 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
   const [cambiandoPassword, setCambiandoPassword] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
   const navegar = useNavigate();
+  const ubicacion = useLocation();
+  const rutaSeccion = rutaDeSeccion(ubicacion.pathname);
 
   // Un menú abierto se cierra al hacer clic afuera o con Escape. Sin esto,
   // queda flotando mientras el usuario trabaja en otra parte.
@@ -60,31 +63,27 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
         icono={<Menu size={18} aria-hidden />}
       />
 
+      {/* No es un <h1>: el título de la pantalla lo pone cada página. Esto es
+          contexto de ubicación, y en un detalle lleva de vuelta a la sección. */}
       <div className="barra-superior__contexto">
-        <h1 className="barra-superior__titulo">{titulo}</h1>
+        {rutaSeccion && rutaSeccion !== ubicacion.pathname ? (
+          <Link to={rutaSeccion} className="barra-superior__titulo barra-superior__titulo--enlace">
+            {titulo}
+          </Link>
+        ) : (
+          <span className="barra-superior__titulo">{titulo}</span>
+        )}
       </div>
 
       <div className="barra-superior__busqueda">
         <button
           type="button"
-          className="buscador"
+          className="buscador buscador-global"
           onClick={alAbrirBusqueda}
-          style={{ width: '100%' }}
           aria-label="Buscar en todo el sistema"
         >
           <Search size={16} className="buscador__icono" aria-hidden />
-          <span
-            className="entrada"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              paddingLeft: 'var(--esp-8)',
-              color: 'var(--neutro-400)',
-              background: 'var(--superficie-sutil)',
-            }}
-          >
-            Buscar expedientes, clientes…
-          </span>
+          <span className="entrada buscador-global__campo">Buscar expedientes, clientes…</span>
           <kbd className="atajo">Ctrl K</kbd>
         </button>
       </div>

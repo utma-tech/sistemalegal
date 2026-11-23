@@ -27,8 +27,14 @@ def pdf_minimo(texto: str) -> bytes:
     return salida.encode("latin-1")
 
 
-def cliente(monkeypatch, token: str = "") -> TestClient:
+def cliente(monkeypatch, token: str = "", sin_token: bool = True, **entorno: str) -> TestClient:
     monkeypatch.setenv("PDF_SERVICE_TOKEN", token)
+    if sin_token:
+        monkeypatch.setenv("PDF_SIN_TOKEN", "1")
+    else:
+        monkeypatch.delenv("PDF_SIN_TOKEN", raising=False)
+    for clave, valor in entorno.items():
+        monkeypatch.setenv(clave, valor)
     import main
 
     return TestClient(importlib.reload(main).app)
@@ -61,3 +67,15 @@ def test_exige_el_token_si_esta_configurado(monkeypatch):
     assert c.post("/extraer", content=pdf_minimo("x")).status_code == 401
     ok = c.post("/extraer", content=pdf_minimo("x"), headers={"X-Servicio-Token": "secreto-de-prueba"})
     assert ok.status_code == 200
+
+
+def test_sin_token_ni_permiso_explicito_no_extrae(monkeypatch):
+    # Olvidar PDF_SERVICE_TOKEN en Render no puede dejar el servicio abierto.
+    c = cliente(monkeypatch, sin_token=False)
+    assert c.post("/extraer", content=pdf_minimo("x")).status_code == 503
+
+
+def test_rechaza_un_cuerpo_mayor_al_tope(monkeypatch):
+    c = cliente(monkeypatch, MEGAS_MAXIMO_ARCHIVO="1")
+    grande = b"%PDF-1.4 " + b"0" * (1024 * 1024 + 10)
+    assert c.post("/extraer", content=grande).status_code == 413

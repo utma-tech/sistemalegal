@@ -61,6 +61,10 @@ services:
   pdf:
     build:
       context: ./pdf-service
+    environment:
+      # Sin esta variable el servicio se niega a extraer si no tiene
+      # PDF_SERVICE_TOKEN (cerrado por defecto). Nunca ponerla en Render.
+      PDF_SIN_TOKEN: '1'
     ports:
       - '8000:8000'
 

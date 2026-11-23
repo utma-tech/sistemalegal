@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { requierePermiso } from '../../middlewares/autenticacion';
 import { consultaValidada, validarConsulta, validarCuerpo } from '../../middlewares/validacion';
 import { idDeRuta } from '../../comun/ruta';
+import { alcancePorRegistro, puedeAccederACausa, usuarioAcotado } from '../../comun/alcance';
 import { registrar } from '../auditoria/servicio';
 import * as servicio from './servicio';
 import {
@@ -23,12 +24,22 @@ import {
 
 export const rutasTareas = Router();
 
+// Alcance: una tarea se ve si es de un expediente propio, si no cuelga de
+// ninguno o si se la delegaron a quien pide (comun/alcance.ts).
+rutasTareas.param(
+  'id',
+  alcancePorRegistro(
+    'SELECT CASE WHEN asignada_a = $2::uuid THEN NULL ELSE causa_id END AS causa_id FROM tarea WHERE id = $1',
+    'No encontramos esa tarea.',
+  ),
+);
+
 rutasTareas.get(
   '/',
   requierePermiso('tarea.ver'),
   validarConsulta(esquemaFiltrosTarea),
   async (req: Request, res: Response) => {
-    res.json(await servicio.listar(consultaValidada<FiltrosTarea>(req)));
+    res.json(await servicio.listar(consultaValidada<FiltrosTarea>(req), usuarioAcotado(req)));
   },
 );
 
@@ -41,7 +52,9 @@ rutasTareas.post(
   requierePermiso('tarea.crear'),
   validarCuerpo(esquemaTarea),
   async (req: Request, res: Response) => {
-    const tarea = await servicio.crear(req.body as DatosTarea, req.sesion!.id);
+    const tarea = await servicio.crear(req.body as DatosTarea, req.sesion!.id, (causa) =>
+      puedeAccederACausa(req, causa),
+    );
     await registrar(req, { entidad: 'tarea', entidadId: tarea.id, accion: 'CREAR', datosDespues: tarea });
     res.status(201).json({ tarea });
   },
@@ -52,7 +65,9 @@ rutasTareas.put(
   requierePermiso('tarea.editar'),
   validarCuerpo(esquemaTarea),
   async (req: Request, res: Response) => {
-    const { antes, despues } = await servicio.editar(idDeRuta(req, 'tarea'), req.body as DatosTarea);
+    const { antes, despues } = await servicio.editar(idDeRuta(req, 'tarea'), req.body as DatosTarea, (causa) =>
+      puedeAccederACausa(req, causa),
+    );
     await registrar(req, {
       entidad: 'tarea',
       entidadId: despues.id,

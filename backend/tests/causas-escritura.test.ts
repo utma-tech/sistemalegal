@@ -13,6 +13,7 @@ import {
   PREFIJO_PRUEBA,
   USUARIOS_DEMO,
   type SesionDePrueba,
+  asignarAExpediente,
 } from './ayudas';
 
 /**
@@ -204,6 +205,8 @@ describe.skipIf(!hayBase)('DELETE /api/causas/:id', () => {
     const { id } = await crearExpediente(admin);
 
     const empleado = await iniciarSesion(app, USUARIOS_DEMO.empleado);
+    // Asignado: si no, el 404 del alcance taparía la falta de permiso.
+    await asignarAExpediente(app, admin, id, empleado.usuario.id);
     const baja = await conSesion(request(app).delete(`/api/causas/${id}`), empleado);
 
     expect(baja.status).toBe(403);
@@ -219,6 +222,7 @@ describe.skipIf(!hayBase)('DELETE /api/causas/:id', () => {
 
     const empleado = await iniciarSesion(app, USUARIOS_DEMO.empleado);
     expect(empleado.usuario.permisos).toContain('causa.editar');
+    await asignarAExpediente(app, admin, id, empleado.usuario.id);
 
     const editada = await conSesion(request(app).put(`/api/causas/${id}`), empleado).send({
       ...base,

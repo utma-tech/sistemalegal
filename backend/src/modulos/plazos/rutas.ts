@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requierePermiso } from '../../middlewares/autenticacion';
 import { validarConsulta, validarCuerpo } from '../../middlewares/validacion';
+import { alcancePorRegistro } from '../../comun/alcance';
 import {
   esquemaCrearPlazo,
   esquemaCumplirPlazo,
@@ -32,6 +33,16 @@ import {
  */
 
 export const rutasPlazos = Router();
+
+// Alcance: un plazo se ve si es de un expediente propio o si quien pide es su
+// responsable (comun/alcance.ts).
+rutasPlazos.param(
+  'id',
+  alcancePorRegistro(
+    'SELECT CASE WHEN responsable_id = $2::uuid THEN NULL ELSE causa_id END AS causa_id FROM plazo WHERE id = $1',
+    'No encontramos ese plazo.',
+  ),
+);
 
 rutasPlazos.get('/', requierePermiso('plazo.ver'), validarConsulta(esquemaFiltrosPlazo), getPlazos);
 rutasPlazos.get('/:id', requierePermiso('plazo.ver'), getPlazo);

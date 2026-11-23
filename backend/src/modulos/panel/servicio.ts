@@ -1,5 +1,6 @@
 import type { SesionUsuario } from '../auth/tipos';
 import * as repositorio from './repositorio';
+import { tieneAlcanceRestringido } from '../../comun/alcance';
 
 /**
  * Armado del panel de inicio.
@@ -32,18 +33,21 @@ export async function armarPanel(sesion: SesionUsuario): Promise<Panel> {
   const puedeVerCausas = sesion.permisos.includes('causa.ver');
   const puedeVerAgenda = sesion.permisos.includes('calendario.ver');
   const puedeVerFinanzas = sesion.permisos.includes('costa.ver');
+  // Alcance por expediente: con un usuario acotado, cada número y cada lista
+  // del panel se calcula solo sobre sus causas (comun/alcance.ts).
+  const alcance = tieneAlcanceRestringido(sesion) ? sesion.id : null;
 
   // Las consultas son independientes entre sí: en serie, el panel tardaría la
   // suma de todas en lugar de la más lenta.
   const [indicadores, plazosProximos, tareas, eventos, actividad, causasRecientes, finanzas] =
     await Promise.all([
-      repositorio.indicadores(sesion.id, DIAS_HORIZONTE),
-      puedeVerPlazos ? repositorio.plazosProximos(DIAS_HORIZONTE, TOPE_LISTA) : [],
-      puedeVerTareas ? repositorio.tareasAbiertas(sesion.id, TOPE_LISTA) : [],
-      puedeVerAgenda ? repositorio.eventosProximos(DIAS_HORIZONTE, TOPE_LISTA) : [],
-      puedeVerCausas ? repositorio.actividadReciente(TOPE_LISTA) : [],
-      puedeVerCausas ? repositorio.causasRecientes(TOPE_LISTA) : [],
-      puedeVerFinanzas ? repositorio.resumenFinanciero() : undefined,
+      repositorio.indicadores(sesion.id, DIAS_HORIZONTE, alcance),
+      puedeVerPlazos ? repositorio.plazosProximos(DIAS_HORIZONTE, TOPE_LISTA, alcance) : [],
+      puedeVerTareas ? repositorio.tareasAbiertas(sesion.id, TOPE_LISTA, alcance) : [],
+      puedeVerAgenda ? repositorio.eventosProximos(DIAS_HORIZONTE, TOPE_LISTA, alcance) : [],
+      puedeVerCausas ? repositorio.actividadReciente(TOPE_LISTA, alcance) : [],
+      puedeVerCausas ? repositorio.causasRecientes(TOPE_LISTA, alcance) : [],
+      puedeVerFinanzas ? repositorio.resumenFinanciero(alcance) : undefined,
     ]);
 
   return {

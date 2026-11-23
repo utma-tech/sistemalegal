@@ -62,6 +62,21 @@ describe.skipIf(!hayBase)('POST /api/auth/login', () => {
     expect(malaClave.body.error).toBe(inexistente.body.error);
   });
 
+  it('limita los intentos fallidos por cuenta aunque cambie la IP de X-Forwarded-For', async () => {
+    // Un correo propio de esta prueba: agotar el cupo de una cuenta demo
+    // bloquearía los logins del resto del archivo.
+    const credenciales = { email: 'fuerza-bruta@estudiodemo.test', password: 'incorrecta' };
+    const intento = (n: number) =>
+      request(app).post('/api/auth/login').set('X-Forwarded-For', `203.0.113.${n}`).send(credenciales);
+
+    for (let n = 1; n <= config.intentosLoginPorCuenta; n++) {
+      expect((await intento(n)).status).toBe(401);
+    }
+    const bloqueado = await intento(config.intentosLoginPorCuenta + 1);
+    expect(bloqueado.status).toBe(429);
+    expect(bloqueado.body.codigo).toBe('DEMASIADOS_INTENTOS');
+  });
+
   it('valida el formato del correo antes de consultar la base', async () => {
     const respuesta = await request(app).post('/api/auth/login').send({ email: 'no-es-un-mail', password: 'x' });
 
@@ -121,6 +136,18 @@ describe.skipIf(!hayBase)('POST /api/auth/refrescar', () => {
     const cookieVigente = (primera.headers['set-cookie'] as unknown as string[]).join('; ');
     const despues = await request(app).post('/api/auth/refrescar').set('Cookie', cookieVigente);
     expect(despues.status).toBe(401);
+  });
+
+  it('dos renovaciones simultáneas con el mismo token producen una sola sesión', async () => {
+    const sesion = await iniciarSesion(app);
+
+    const respuestas = await Promise.all(
+      Array.from({ length: 5 }, () => request(app).post('/api/auth/refrescar').set('Cookie', sesion.cookie)),
+    );
+
+    const exitosas = respuestas.filter((r) => r.status === 200);
+    expect(exitosas).toHaveLength(1);
+    expect(respuestas.filter((r) => r.status === 401)).toHaveLength(respuestas.length - 1);
   });
 
   it('rechaza el refresco cuando no hay cookie', async () => {

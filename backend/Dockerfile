@@ -22,5 +22,8 @@ RUN npm ci --omit=dev
 COPY --from=compilacion /app/dist ./dist
 # La CA de Supabase: sin ella el backend no puede verificar el certificado del pooler.
 COPY certs ./certs
+# Sin privilegios: la imagen de Node trae el usuario `node`. El código y las
+# dependencias quedan de root, así que el proceso no puede modificarlos.
+USER node
 EXPOSE 4000
 CMD ["node", "dist/index.js"]

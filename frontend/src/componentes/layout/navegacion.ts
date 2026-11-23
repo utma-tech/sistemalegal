@@ -77,3 +77,12 @@ export function tituloDeRuta(ruta: string): string {
   if (ruta.startsWith('/diagnostico')) return 'Diagnóstico del sistema';
   return 'SistemaLegal';
 }
+
+/** Ruta de la sección a la que pertenece una pantalla, para volver desde un detalle. */
+export function rutaDeSeccion(ruta: string): string | null {
+  if (ruta === '/') return '/';
+  const item = [...NAVEGACION, ...NAVEGACION_ADMINISTRACION].find(
+    (entrada) => entrada.ruta !== '/' && ruta.startsWith(entrada.ruta),
+  );
+  return item?.ruta ?? null;
+}

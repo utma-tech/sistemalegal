@@ -47,6 +47,13 @@ services:
         sync: false
       - key: CORS_PREFIJO_PREVIEW
         value: sistemalegal
+      # Slug del equipo de Vercel: el final del subdominio de los previews
+      # (sistemalegal-abc123-<slug>.vercel.app). Sin el, cualquier cuenta de
+      # Vercel con un proyecto sistemalegal-* pasa el CORS. Si se define, el
+      # dominio de produccion (sistemalegal-henna.vercel.app) tiene que estar
+      # en CORS_ORIGIN, porque no termina en el slug.
+      - key: CORS_SUFIJO_EQUIPO
+        sync: false
       # El navegador le habla a Vercel, que reenvía /api a este servicio
       # (frontend/vercel.json): hay dos proxies delante de Express y la cookie
       # de sesión es de primera parte.

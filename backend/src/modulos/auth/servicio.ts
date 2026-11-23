@@ -90,7 +90,15 @@ export async function refrescarSesion(
     throw new ErrorAutenticacion('Tu cuenta ya no está activa.');
   }
 
-  await repositorio.revocarRefreshToken(hash);
+  // La verificación de arriba y la revocación no son atómicas: dos pedidos
+  // simultáneos con el mismo token pasarían los dos y saldrían con dos sesiones
+  // válidas. El UPDATE condicional decide quién lo consume; el que pierde se
+  // rechaza. No se cortan todas las sesiones: dos pestañas renovando a la vez
+  // es un caso legítimo, y si el perdedor era una copia robada, el siguiente
+  // uso de ese token ya revocado sí dispara la detección de arriba.
+  if (!(await repositorio.consumirRefreshToken(hash))) {
+    throw new ErrorAutenticacion('Tu sesión no es válida. Volvé a iniciar sesión.');
+  }
 
   const sesion = await armarSesion(usuario);
   const { refreshToken: nuevo, expiraRefreshEn } = await emitirRefreshToken(usuario.id, contexto);

@@ -8,6 +8,7 @@ import { fechaOpcional, idDeRuta, textoOpcional } from '../../comun/ruta';
 import { ErrorConflicto, ErrorNoEncontrado, ErrorSolicitud } from '../../comun/errores';
 import { enTransaccion, obtenerPool } from '../../db';
 import { registrar } from '../auditoria/servicio';
+import { alcancePorRegistro, sqlCausaEnAlcance, usuarioAcotado } from '../../comun/alcance';
 
 /**
  * Costas y cobros (`/api/costas`, y el alta bajo `/api/causas/:id/costas`).
@@ -109,13 +110,16 @@ const COLUMNAS = `
 
 const ORIGEN = `FROM vw_costa_saldo v JOIN costa co ON co.id = v.costa_id`;
 
-function condiciones(f: FiltrosCosta): { sql: string; valores: unknown[] } {
+function condiciones(f: FiltrosCosta, alcance: string | null): { sql: string; valores: unknown[] } {
   const partes = ['TRUE'];
   const valores: unknown[] = [];
   const agregar = (sql: (n: number) => string, valor: unknown) => {
     valores.push(valor);
     partes.push(sql(valores.length));
   };
+  // Alcance por expediente (comun/alcance.ts). Va también en los totales y en
+  // la exportación: los dos usan estas mismas condiciones.
+  if (alcance) agregar((n) => sqlCausaEnAlcance('v.causa_id', `$${n}`), alcance);
   if (f.causa) agregar((n) => `v.causa_id = $${n}`, f.causa);
   if (f.estado) agregar((n) => `v.estado_cobro = $${n}`, f.estado);
   if (f.a_cargo_de) agregar((n) => `v.a_cargo_de = $${n}`, f.a_cargo_de);
@@ -179,13 +183,22 @@ function celda(valor: unknown): string {
 
 export const rutasCostas = Router();
 
+// Alcance: una costa (y sus cobros) solo es visible desde su expediente.
+rutasCostas.param(
+  'id',
+  alcancePorRegistro(
+    'SELECT causa_id FROM costa WHERE id = $1 AND $2::uuid IS NOT NULL',
+    'No encontramos esa costa.',
+  ),
+);
+
 rutasCostas.get(
   '/',
   requierePermiso('costa.ver'),
   validarConsulta(esquemaFiltros),
   async (req: Request, res: Response) => {
     const filtros = consultaValidada<FiltrosCosta>(req);
-    const { sql, valores } = condiciones(filtros);
+    const { sql, valores } = condiciones(filtros, usuarioAcotado(req));
     const pool = obtenerPool();
 
     const [datos, totales] = await Promise.all([
@@ -219,7 +232,7 @@ rutasCostas.get(
   validarConsulta(esquemaFiltros),
   async (req: Request, res: Response) => {
     const filtros = consultaValidada<FiltrosCosta>(req);
-    const { sql, valores } = condiciones(filtros);
+    const { sql, valores } = condiciones(filtros, usuarioAcotado(req));
     const { rows } = await obtenerPool().query<CostaFila>(
       `SELECT ${COLUMNAS} ${ORIGEN} WHERE ${sql} ORDER BY v.fecha_devengamiento, v.caratula LIMIT 10000`,
       valores,

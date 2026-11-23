@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { config, origenAutorizado } from './config';
 import { verificarBase } from './db';
 import { requiereSesion } from './middlewares/autenticacion';
+import { alcanceCausaDeRuta } from './comun/alcance';
 import { rutasAuth } from './modulos/auth/rutas';
 import { rutasCausas } from './modulos/causas/rutas';
 import { rutasPlazos, rutasPlazosDeCausa } from './modulos/plazos/rutas';
@@ -75,7 +76,10 @@ export function crearApp(): Express {
       estado: 'ok',
       entorno: config.entorno,
       base: base.conectada ? 'conectada' : 'sin-conexion',
-      detalleBase: base.conectada ? undefined : base.error,
+      // El mensaje de pg puede nombrar el host del pooler, el usuario o el
+      // problema de TLS, y este endpoint no pide sesión: en producción el
+      // detalle va solo al log, igual que en el manejador de errores.
+      detalleBase: base.conectada || config.entorno === 'production' ? undefined : base.error,
       momento: new Date().toISOString(),
     });
   });
@@ -86,6 +90,10 @@ export function crearApp(): Express {
   // agregar un módulo nuevo no pueda olvidarse de protegerlo.
   app.use('/api', requiereSesion);
   app.use('/api/panel', rutasPanel);
+  // Alcance por expediente (comun/alcance.ts): todo lo que cuelga de
+  // /api/causas/:id —el detalle y sus partes, plazos, costas, documentos—
+  // pasa por acá antes de llegar a su ruta.
+  app.use('/api/causas/:id', alcanceCausaDeRuta);
   app.use('/api/causas', rutasCausas);
   // Los plazos de un expediente cuelgan de el, pero viven en su propio modulo:
   // el motor de computo no tiene por que estar dentro de causas.

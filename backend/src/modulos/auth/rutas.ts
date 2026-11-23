@@ -27,7 +27,34 @@ const limiteLogin = rateLimit({
   },
 });
 
-rutasAuth.post('/login', limiteLogin, validarCuerpo(esquemaLogin), postLogin);
+/**
+ * Límite de intentos fallidos por cuenta.
+ *
+ * El límite por IP solo sirve si la IP es confiable, y no siempre lo es: quien
+ * llama a Render directo (sin pasar por Vercel) controla una de las entradas de
+ * X-Forwarded-For que Express toma como propia, y con eso rota de "IP" en cada
+ * intento. El correo, en cambio, no se falsifica con cabeceras: probar
+ * contraseñas contra una cuenta queda acotado igual.
+ *
+ * Va después de validarCuerpo para usar el correo ya normalizado (sin espacios,
+ * en minúsculas): si no, "Admin@x" y "admin@x" contarían por separado. Aplica
+ * igual exista o no la cuenta, así que el 429 no revela qué correos tienen
+ * usuario.
+ */
+const limiteCuenta = rateLimit({
+  windowMs: config.minutosVentanaLogin * 60_000,
+  limit: config.intentosLoginPorCuenta,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => `cuenta:${(req.body as { email: string }).email}`,
+  message: {
+    error: 'Demasiados intentos fallidos para esta cuenta. Esperá unos minutos y volvé a probar.',
+    codigo: 'DEMASIADOS_INTENTOS',
+  },
+});
+
+rutasAuth.post('/login', limiteLogin, validarCuerpo(esquemaLogin), limiteCuenta, postLogin);
 rutasAuth.post('/refrescar', postRefrescar);
 rutasAuth.post('/logout', postLogout);
 rutasAuth.get('/perfil', requiereSesion, getPerfil);

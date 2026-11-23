@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
+// Inter autoalojada: viaja en el bundle, así que funciona sin conexión.
+import '@fontsource-variable/inter';
 import './estilos/tokens.css';
 import './estilos/base.css';
 import './estilos/componentes.css';

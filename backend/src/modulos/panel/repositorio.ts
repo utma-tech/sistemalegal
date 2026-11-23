@@ -1,4 +1,5 @@
 import { obtenerPool } from '../../db';
+import { sqlCausaEnAlcance, sqlCausaOpcionalEnAlcance } from '../../comun/alcance';
 
 /**
  * Consultas del panel de inicio.
@@ -20,17 +21,24 @@ export interface Indicadores {
 /**
  * @param usuarioId para separar "mis tareas" del total del estudio.
  * @param diasHorizonte ventana de "por vencer"; 7 días es la semana de trabajo.
+ * @param alcance usuario acotado (comun/alcance.ts) o null si ve todo el estudio.
  */
-export async function indicadores(usuarioId: string, diasHorizonte: number): Promise<Indicadores> {
+export async function indicadores(
+  usuarioId: string,
+  diasHorizonte: number,
+  alcance: string | null,
+): Promise<Indicadores> {
   const { rows } = await obtenerPool().query<Indicadores>(
     `SELECT
        (SELECT count(*) FROM causa c
           JOIN estado_causa ec ON ec.id = c.estado_causa_id
-         WHERE c.eliminado_en IS NULL AND ec.es_final = FALSE)::int AS causas_activas,
+         WHERE c.eliminado_en IS NULL AND ec.es_final = FALSE
+           AND ${sqlCausaEnAlcance('c.id', '$3')})::int AS causas_activas,
 
        (SELECT count(*) FROM plazo p
           JOIN causa c ON c.id = p.causa_id AND c.eliminado_en IS NULL
          WHERE p.estado = 'PENDIENTE'
+           AND (p.responsable_id = $3::uuid OR ${sqlCausaEnAlcance('p.causa_id', '$3')})
            AND p.fecha_vencimiento BETWEEN CURRENT_DATE
                                        AND CURRENT_DATE + make_interval(days => $2))::int AS plazos_por_vencer,
 
@@ -38,19 +46,22 @@ export async function indicadores(usuarioId: string, diasHorizonte: number): Pro
        -- marcó cumplido y eso es exactamente lo que hay que mirar.
        (SELECT count(*) FROM plazo p
           JOIN causa c ON c.id = p.causa_id AND c.eliminado_en IS NULL
-         WHERE p.estado = 'PENDIENTE' AND p.fecha_vencimiento < CURRENT_DATE)::int AS plazos_vencidos,
+         WHERE p.estado = 'PENDIENTE' AND p.fecha_vencimiento < CURRENT_DATE
+           AND (p.responsable_id = $3::uuid OR ${sqlCausaEnAlcance('p.causa_id', '$3')}))::int AS plazos_vencidos,
 
        (SELECT count(*) FROM tarea t
-         WHERE t.estado IN ('PENDIENTE', 'EN_CURSO'))::int AS tareas_abiertas,
+         WHERE t.estado IN ('PENDIENTE', 'EN_CURSO')
+           AND (t.asignada_a = $3::uuid OR ${sqlCausaOpcionalEnAlcance('t.causa_id', '$3')}))::int AS tareas_abiertas,
 
        (SELECT count(*) FROM tarea t
          WHERE t.estado IN ('PENDIENTE', 'EN_CURSO') AND t.asignada_a = $1)::int AS mis_tareas_abiertas,
 
        (SELECT count(*) FROM evento_calendario e
          WHERE e.tipo = 'AUDIENCIA'
+           AND ${sqlCausaOpcionalEnAlcance('e.causa_id', '$3')}
            AND e.fecha_inicio >= now()
            AND e.fecha_inicio < now() + make_interval(days => $2))::int AS audiencias_proximas`,
-    [usuarioId, diasHorizonte],
+    [usuarioId, diasHorizonte, alcance],
   );
 
   // La consulta es un SELECT de subconsultas escalares: siempre devuelve una fila.
@@ -85,7 +96,11 @@ export interface PlazoProximo {
  * Los vencidos encabezan la lista con días negativos: esconderlos sería el peor
  * comportamiento posible para esta pantalla.
  */
-export async function plazosProximos(diasHorizonte: number, limite: number): Promise<PlazoProximo[]> {
+export async function plazosProximos(
+  diasHorizonte: number,
+  limite: number,
+  alcance: string | null,
+): Promise<PlazoProximo[]> {
   const { rows } = await obtenerPool().query<PlazoProximo>(
     `SELECT p.id,
             p.causa_id,
@@ -103,9 +118,10 @@ export async function plazosProximos(diasHorizonte: number, limite: number): Pro
        LEFT JOIN usuario    u  ON u.id  = p.responsable_id
       WHERE p.estado = 'PENDIENTE'
         AND p.fecha_vencimiento < CURRENT_DATE + make_interval(days => $1)
+        AND (p.responsable_id = $3::uuid OR ${sqlCausaEnAlcance('p.causa_id', '$3')})
       ORDER BY p.fecha_vencimiento
       LIMIT $2`,
-    [diasHorizonte, limite],
+    [diasHorizonte, limite, alcance],
   );
   return rows;
 }
@@ -124,7 +140,11 @@ export interface TareaPanel {
   es_mia: boolean;
 }
 
-export async function tareasAbiertas(usuarioId: string, limite: number): Promise<TareaPanel[]> {
+export async function tareasAbiertas(
+  usuarioId: string,
+  limite: number,
+  alcance: string | null,
+): Promise<TareaPanel[]> {
   const { rows } = await obtenerPool().query<TareaPanel>(
     `SELECT t.id,
             t.titulo,
@@ -140,12 +160,13 @@ export async function tareasAbiertas(usuarioId: string, limite: number): Promise
        LEFT JOIN causa   c ON c.id = t.causa_id AND c.eliminado_en IS NULL
        LEFT JOIN usuario u ON u.id = t.asignada_a
       WHERE t.estado IN ('PENDIENTE', 'EN_CURSO')
+        AND (t.asignada_a = $3::uuid OR ${sqlCausaOpcionalEnAlcance('t.causa_id', '$3')})
       -- Primero lo propio, después lo que vence antes, después lo prioritario.
       ORDER BY (t.asignada_a = $1) DESC NULLS LAST,
                t.fecha_vencimiento ASC NULLS LAST,
                CASE t.prioridad WHEN 'ALTA' THEN 0 WHEN 'MEDIA' THEN 1 ELSE 2 END
       LIMIT $2`,
-    [usuarioId, limite],
+    [usuarioId, limite, alcance],
   );
   return rows;
 }
@@ -161,7 +182,11 @@ export interface EventoPanel {
   caratula: string | null;
 }
 
-export async function eventosProximos(diasHorizonte: number, limite: number): Promise<EventoPanel[]> {
+export async function eventosProximos(
+  diasHorizonte: number,
+  limite: number,
+  alcance: string | null,
+): Promise<EventoPanel[]> {
   const { rows } = await obtenerPool().query<EventoPanel>(
     `SELECT e.id,
             e.titulo,
@@ -175,9 +200,10 @@ export async function eventosProximos(diasHorizonte: number, limite: number): Pr
        LEFT JOIN causa c ON c.id = e.causa_id AND c.eliminado_en IS NULL
       WHERE e.fecha_inicio >= date_trunc('day', now())
         AND e.fecha_inicio < now() + make_interval(days => $1)
+        AND ${sqlCausaOpcionalEnAlcance('e.causa_id', '$3')}
       ORDER BY e.fecha_inicio
       LIMIT $2`,
-    [diasHorizonte, limite],
+    [diasHorizonte, limite, alcance],
   );
   return rows;
 }
@@ -194,7 +220,7 @@ export interface ActividadPanel {
 }
 
 /** Últimos movimientos procesales del estudio: qué pasó, en qué causa y quién lo cargó. */
-export async function actividadReciente(limite: number): Promise<ActividadPanel[]> {
+export async function actividadReciente(limite: number, alcance: string | null): Promise<ActividadPanel[]> {
   const { rows } = await obtenerPool().query<ActividadPanel>(
     `SELECT m.id,
             m.causa_id,
@@ -207,9 +233,10 @@ export async function actividadReciente(limite: number): Promise<ActividadPanel[
        FROM movimiento_causa m
        JOIN causa c ON c.id = m.causa_id AND c.eliminado_en IS NULL
        LEFT JOIN usuario u ON u.id = m.registrado_por
+      WHERE ${sqlCausaEnAlcance('m.causa_id', '$2')}
       ORDER BY m.fecha DESC, m.creado_en DESC
       LIMIT $1`,
-    [limite],
+    [limite, alcance],
   );
   return rows;
 }
@@ -224,7 +251,7 @@ export interface CausaReciente {
   actualizado_en: string;
 }
 
-export async function causasRecientes(limite: number): Promise<CausaReciente[]> {
+export async function causasRecientes(limite: number, alcance: string | null): Promise<CausaReciente[]> {
   const { rows } = await obtenerPool().query<CausaReciente>(
     `SELECT c.id,
             c.caratula,
@@ -237,9 +264,10 @@ export async function causasRecientes(limite: number): Promise<CausaReciente[]> 
        JOIN estado_causa ec ON ec.id = c.estado_causa_id
        JOIN fuero        f  ON f.id  = c.fuero_id
       WHERE c.eliminado_en IS NULL
+        AND ${sqlCausaEnAlcance('c.id', '$2')}
       ORDER BY c.actualizado_en DESC
       LIMIT $1`,
-    [limite],
+    [limite, alcance],
   );
   return rows;
 }
@@ -255,12 +283,14 @@ export interface ResumenFinanciero {
  * Solo lo pide el servicio cuando el usuario tiene permiso costa.ver: hay
  * personal que no debe ver información financiera.
  */
-export async function resumenFinanciero(): Promise<ResumenFinanciero> {
+export async function resumenFinanciero(alcance: string | null): Promise<ResumenFinanciero> {
   const { rows } = await obtenerPool().query<ResumenFinanciero>(
     `SELECT COALESCE(sum(saldo_pendiente), 0)::text AS saldo_pendiente,
             count(*)::int                           AS costas_pendientes
        FROM vw_costa_saldo
-      WHERE estado_cobro IN ('PENDIENTE', 'PARCIAL')`,
+      WHERE estado_cobro IN ('PENDIENTE', 'PARCIAL')
+        AND ${sqlCausaEnAlcance('causa_id', '$1')}`,
+    [alcance],
   );
   return rows[0] ?? { saldo_pendiente: '0', costas_pendientes: 0 };
 }

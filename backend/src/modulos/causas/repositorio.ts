@@ -1,5 +1,6 @@
 import { enTransaccion, obtenerPool } from '../../db';
 import { desplazamiento } from '../../comun/paginacion';
+import { sqlCausaEnAlcance } from '../../comun/alcance';
 import type {
   DatosAgregarParte,
   DatosAgregarProfesional,
@@ -82,9 +83,15 @@ interface Condiciones {
  * Los dos tienen que filtrar exactamente igual: si divergen, el total de la
  * paginación deja de coincidir con las filas mostradas.
  */
-function condiciones(filtros: FiltrosCausa): Condiciones {
+function condiciones(filtros: FiltrosCausa, alcance: string | null): Condiciones {
   const partes = ['c.eliminado_en IS NULL'];
   const valores: unknown[] = [];
+
+  // Alcance por expediente: con un usuario acotado, solo sus causas asignadas.
+  if (alcance) {
+    valores.push(alcance);
+    partes.push(sqlCausaEnAlcance('c.id', `$${valores.length}`));
+  }
 
   if (filtros.busqueda) {
     // fn_sin_acentos a ambos lados: quien escribe "cordoba" tiene que encontrar
@@ -125,8 +132,8 @@ function condiciones(filtros: FiltrosCausa): Condiciones {
   return { sql: partes.join('\n     AND '), valores };
 }
 
-export async function listar(filtros: FiltrosCausa): Promise<CausaListada[]> {
-  const { sql: donde, valores } = condiciones(filtros);
+export async function listar(filtros: FiltrosCausa, alcance: string | null): Promise<CausaListada[]> {
+  const { sql: donde, valores } = condiciones(filtros, alcance);
   const columna = COLUMNAS_ORDEN[filtros.orden];
   const direccion = filtros.direccion === 'asc' ? 'ASC' : 'DESC';
 
@@ -162,8 +169,8 @@ export async function listar(filtros: FiltrosCausa): Promise<CausaListada[]> {
   return rows;
 }
 
-export async function contar(filtros: FiltrosCausa): Promise<number> {
-  const { sql: donde, valores } = condiciones(filtros);
+export async function contar(filtros: FiltrosCausa, alcance: string | null): Promise<number> {
+  const { sql: donde, valores } = condiciones(filtros, alcance);
   const { rows } = await obtenerPool().query<{ total: string }>(
     `SELECT count(*) AS total
        FROM causa c

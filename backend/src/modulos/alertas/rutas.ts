@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { requierePermiso } from '../../middlewares/autenticacion';
+import { causasAsignadas, usuarioAcotado } from '../../comun/alcance';
 import { consultaValidada, validarConsulta } from '../../middlewares/validacion';
 import { idDeRuta } from '../../comun/ruta';
 import * as servicio from './servicio';
@@ -23,7 +24,14 @@ rutasAlertas.get(
   validarConsulta(esquemaFiltros),
   async (req: Request, res: Response) => {
     const { alcance } = consultaValidada<z.infer<typeof esquemaFiltros>>(req);
-    const datos = await servicio.vigentes(alcance === 'mias' ? req.sesion!.id : undefined);
+    let datos = await servicio.vigentes(alcance === 'mias' ? req.sesion!.id : undefined);
+    // La evaluación se calcula una vez para todo el estudio (y se cachea); el
+    // alcance por expediente se aplica después, sobre el resultado.
+    const usuario = usuarioAcotado(req);
+    if (usuario) {
+      const propias = await causasAsignadas(usuario);
+      datos = datos.filter((a) => a.responsable_id === usuario || propias.has(a.causa_id));
+    }
     res.json({
       datos,
       resumen: {

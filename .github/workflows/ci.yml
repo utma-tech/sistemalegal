@@ -47,6 +47,12 @@ jobs:
       - run: npm ci
         working-directory: backend
 
+      # Solo las dependencias que se despliegan: las de desarrollo no llegan a
+      # producción. Falla la CI ante un aviso alto o crítico.
+      - name: Auditoría de dependencias
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: backend
+
       - run: npm run typecheck
         working-directory: backend
 
@@ -59,7 +65,7 @@ jobs:
         working-directory: backend
 
   frontend:
-    name: Frontend (typecheck y build)
+    name: Frontend (typecheck, pruebas y build)
     runs-on: ubuntu-latest
 
     steps:
@@ -74,7 +80,14 @@ jobs:
       - run: npm ci
         working-directory: frontend
 
+      - name: Auditoría de dependencias
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
+
       - run: npm run typecheck
+        working-directory: frontend
+
+      - run: npm test
         working-directory: frontend
 
       - run: npm run build

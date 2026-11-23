@@ -10,6 +10,7 @@ import {
   PREFIJO_PRUEBA,
   USUARIOS_DEMO,
   type SesionDePrueba,
+  asignarAExpediente,
 } from './ayudas';
 
 /**
@@ -442,6 +443,7 @@ describe.skipIf(!hayBase)('permisos', () => {
     const empleado = await iniciarSesion(app, USUARIOS_DEMO.empleado);
     expect(empleado.usuario.permisos).toContain('plazo.crear');
     expect(empleado.usuario.permisos).not.toContain('plazo.eliminar');
+    await asignarAExpediente(app, admin, causaId, empleado.usuario.id);
 
     const creado = await crearPlazo(empleado, causaId);
     expect(creado.status).toBe(201);

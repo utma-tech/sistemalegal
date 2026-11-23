@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { consultaValidada } from '../../middlewares/validacion';
 import { ErrorSolicitud } from '../../comun/errores';
+import { usuarioAcotado } from '../../comun/alcance';
 import { registrar } from '../auditoria/servicio';
 import * as servicio from './servicio';
 import type { DatosPersona, FiltrosPersona } from './esquemas';
@@ -24,7 +25,7 @@ export async function getPersonas(req: Request, res: Response, next: NextFunctio
 
 export async function getPersona(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    res.json(await servicio.obtenerDetalle(idDeRuta(req)));
+    res.json(await servicio.obtenerDetalle(idDeRuta(req), usuarioAcotado(req)));
   } catch (error) {
     next(error);
   }

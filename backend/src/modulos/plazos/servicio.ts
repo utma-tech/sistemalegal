@@ -84,10 +84,10 @@ export async function simular(
  * El estado VENCIDO queda para cuando alguien decide cerrarlo como incumplido,
  * que es una decisión del estudio y no un efecto del paso del tiempo.
  */
-export async function listarPlazos(filtros: FiltrosPlazo): Promise<Pagina<PlazoListado>> {
+export async function listarPlazos(filtros: FiltrosPlazo, alcance: string | null): Promise<Pagina<PlazoListado>> {
   const [datos, total] = await Promise.all([
-    repositorio.listar(filtros),
-    repositorio.contar(filtros),
+    repositorio.listar(filtros, alcance),
+    repositorio.contar(filtros, alcance),
   ]);
   return armarPagina(datos, total, filtros);
 }
