@@ -143,7 +143,10 @@ export function PaginaAcceso() {
         )}
 
         <p className="acceso__creditos">
-          SistemaLegal — desarrollado por <strong>UTMA Technologies</strong>
+          SistemaLegal — desarrollado por{' '}
+          <a href="https://utma.io" target="_blank" rel="noopener noreferrer">
+            UTMA Technologies
+          </a>
         </p>
       </div>
     </div>

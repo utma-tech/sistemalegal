@@ -225,6 +225,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
+}
+
+.barra-lateral__creditos:hover,
+.barra-lateral__creditos:focus-visible {
+  color: var(--sobre-profundo);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* --- Barra lateral contraída ----------------------------------------------
@@ -723,6 +731,18 @@
   text-align: center;
   font-size: var(--texto-sm);
   color: var(--texto-tenue);
+}
+
+.acceso__creditos a {
+  font-weight: 600;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.acceso__creditos a:hover,
+.acceso__creditos a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .acceso__demo {
