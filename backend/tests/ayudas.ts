@@ -41,6 +41,27 @@ export async function iniciarSesion(
   };
 }
 
+/**
+ * Asigna a un integrante como colaborador de un expediente.
+ *
+ * El Empleado solo opera sobre las causas en las que está asignado
+ * (src/comun/alcance.ts): las pruebas que lo usan tienen que asignarlo antes.
+ */
+export async function asignarAExpediente(
+  app: Express,
+  quienAsigna: SesionDePrueba,
+  causaId: string,
+  usuarioId: string,
+): Promise<void> {
+  const respuesta = await request(app)
+    .post(`/api/causas/${causaId}/profesionales`)
+    .set('Authorization', `Bearer ${quienAsigna.accessToken}`)
+    .send({ usuario_id: usuarioId, rol_en_causa: 'COLABORADOR' });
+  if (respuesta.status !== 201) {
+    throw new Error(`No se pudo asignar al expediente: ${respuesta.status} ${JSON.stringify(respuesta.body)}`);
+  }
+}
+
 /** Azúcar para no repetir la cabecera Authorization en cada petición. */
 export function conSesion(peticion: request.Test, sesion: SesionDePrueba): request.Test {
   return peticion.set('Authorization', `Bearer ${sesion.accessToken}`);

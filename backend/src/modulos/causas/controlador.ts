@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { consultaValidada } from '../../middlewares/validacion';
 import { ErrorSolicitud } from '../../comun/errores';
+import { usuarioAcotado } from '../../comun/alcance';
 import { registrar } from '../auditoria/servicio';
 import * as servicio from './servicio';
 import {
@@ -28,7 +29,7 @@ function idDeRuta(req: Request): string {
 
 export async function getCausas(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    res.json(await servicio.listarCausas(consultaValidada<FiltrosCausa>(req)));
+    res.json(await servicio.listarCausas(consultaValidada<FiltrosCausa>(req), usuarioAcotado(req)));
   } catch (error) {
     next(error);
   }

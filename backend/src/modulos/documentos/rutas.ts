@@ -8,6 +8,7 @@ import { ErrorConflicto, ErrorHttp, ErrorNoEncontrado, ErrorSolicitud } from '..
 import { config } from '../../config';
 import { obtenerPool } from '../../db';
 import { registrar } from '../auditoria/servicio';
+import { alcancePorRegistro, puedeAccederACausa, sqlCausaEnAlcance, usuarioAcotado } from '../../comun/alcance';
 import { almacenamiento } from './almacenamiento';
 import { detectarTipo } from './tipos-archivo';
 import { extraerTexto } from './extraccion';
@@ -139,13 +140,19 @@ rutasDocumentosDeCausa.post(
     if (!causa[0]) throw new ErrorNoEncontrado('No encontramos ese expediente.');
 
     const hash = createHash('sha256').update(contenido).digest('hex');
-    const { rows: repetido } = await pool.query<{ caratula: string }>(
-      `SELECT c.caratula FROM documento d JOIN causa c ON c.id = d.causa_id
+    const { rows: repetido } = await pool.query<{ caratula: string; causa_id: string }>(
+      `SELECT c.caratula, c.id AS causa_id FROM documento d JOIN causa c ON c.id = d.causa_id
         WHERE d.hash_sha256 = $1 AND d.eliminado_en IS NULL`,
       [hash],
     );
     if (repetido[0]) {
-      throw new ErrorConflicto(`Ese archivo ya está cargado, en «${repetido[0].caratula}».`);
+      // La carátula de un expediente fuera del alcance no se revela.
+      const visible = await puedeAccederACausa(req, repetido[0].causa_id);
+      throw new ErrorConflicto(
+        visible
+          ? `Ese archivo ya está cargado, en «${repetido[0].caratula}».`
+          : 'Ese archivo ya está cargado en otro expediente del estudio.',
+      );
     }
 
     // La clave no usa el nombre original: dos archivos con el mismo nombre no
@@ -194,6 +201,15 @@ rutasDocumentosDeCausa.post(
 
 export const rutasDocumentos = Router();
 
+// Alcance: un documento solo se descarga, se lee o se borra desde su expediente.
+rutasDocumentos.param(
+  'id',
+  alcancePorRegistro(
+    'SELECT causa_id FROM documento WHERE id = $1 AND $2::uuid IS NOT NULL',
+    'No encontramos ese documento.',
+  ),
+);
+
 /**
  * Búsqueda en el texto de los PDF.
  *
@@ -220,9 +236,10 @@ rutasDocumentos.get(
         WHERE to_tsvector('spanish', fn_sin_acentos(coalesce(dt.texto, '')))
               @@ websearch_to_tsquery('spanish', fn_sin_acentos($1))
           AND ($2::uuid IS NULL OR d.causa_id = $2::uuid)
+          AND ${sqlCausaEnAlcance('d.causa_id', '$3')}
         ORDER BY relevancia DESC
         LIMIT 30`,
-      [q, causa ?? null],
+      [q, causa ?? null, usuarioAcotado(req)],
     );
     res.json({ datos: rows });
   },

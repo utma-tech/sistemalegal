@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { consultaValidada } from '../../middlewares/validacion';
+import { usuarioAcotado } from '../../comun/alcance';
 import { ErrorSolicitud } from '../../comun/errores';
 import { registrar } from '../auditoria/servicio';
 import * as servicio from './servicio';
@@ -22,7 +23,7 @@ function idDeRuta(req: Request, que = 'plazo'): string {
 
 export async function getPlazos(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    res.json(await servicio.listarPlazos(consultaValidada<FiltrosPlazo>(req)));
+    res.json(await servicio.listarPlazos(consultaValidada<FiltrosPlazo>(req), usuarioAcotado(req)));
   } catch (error) {
     next(error);
   }

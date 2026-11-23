@@ -93,6 +93,20 @@ export async function buscarRefreshToken(tokenHash: string): Promise<FilaRefresh
   return rows[0];
 }
 
+/**
+ * Revoca el token solo si sigue vigente y dice si esta llamada fue la que lo
+ * consumió. Es la única operación atómica de la rotación: PostgreSQL bloquea la
+ * fila, así que de dos UPDATE simultáneos solo uno la encuentra sin revocar.
+ */
+export async function consumirRefreshToken(tokenHash: string): Promise<boolean> {
+  const { rowCount } = await obtenerPool().query(
+    `UPDATE refresh_token SET revocado_en = now()
+      WHERE token_hash = $1 AND revocado_en IS NULL AND expira_en > now()`,
+    [tokenHash],
+  );
+  return rowCount === 1;
+}
+
 export async function revocarRefreshToken(tokenHash: string): Promise<void> {
   await obtenerPool().query(
     'UPDATE refresh_token SET revocado_en = now() WHERE token_hash = $1 AND revocado_en IS NULL',

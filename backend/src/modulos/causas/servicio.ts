@@ -23,10 +23,10 @@ import type {
 
 /** Capa de servicio: reglas de negocio del módulo de causas. */
 
-export async function listarCausas(filtros: FiltrosCausa): Promise<Pagina<CausaListada>> {
+export async function listarCausas(filtros: FiltrosCausa, alcance: string | null): Promise<Pagina<CausaListada>> {
   // El conteo y el listado se piden en paralelo: son dos consultas
   // independientes y esperarlas en serie duplicaría la latencia del listado.
-  const [datos, total] = await Promise.all([repositorio.listar(filtros), repositorio.contar(filtros)]);
+  const [datos, total] = await Promise.all([repositorio.listar(filtros, alcance), repositorio.contar(filtros, alcance)]);
   return armarPagina(datos, total, filtros);
 }
 
@@ -75,14 +75,18 @@ export async function movimientos(id: string): Promise<MovimientoCausa[]> {
  */
 export async function plazos(id: string): Promise<PlazoListado[]> {
   await exigirCausa(id);
-  return plazosRepositorio.listar({
-    causa: id,
-    vigencia: 'todos',
-    pagina: 1,
-    tamano: 200,
-    orden: 'fecha_vencimiento',
-    direccion: 'asc',
-  });
+  // Sin alcance extra: el acceso al expediente ya lo verificó alcanceCausaDeRuta.
+  return plazosRepositorio.listar(
+    {
+      causa: id,
+      vigencia: 'todos',
+      pagina: 1,
+      tamano: 200,
+      orden: 'fecha_vencimiento',
+      direccion: 'asc',
+    },
+    null,
+  );
 }
 
 export async function documentos(id: string): Promise<DocumentoCausa[]> {

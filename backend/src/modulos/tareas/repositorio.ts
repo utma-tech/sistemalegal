@@ -1,5 +1,6 @@
 import { obtenerPool } from '../../db';
 import { desplazamiento } from '../../comun/paginacion';
+import { sqlCausaOpcionalEnAlcance } from '../../comun/alcance';
 import type { DatosTarea, FiltrosTarea } from './esquemas';
 
 /**
@@ -59,7 +60,7 @@ const ORIGEN = `
   LEFT JOIN usuario ua ON ua.id = t.asignada_a
   LEFT JOIN usuario uc ON uc.id = t.creada_por`;
 
-function condiciones(filtros: FiltrosTarea): { sql: string; valores: unknown[] } {
+function condiciones(filtros: FiltrosTarea, alcance: string | null): { sql: string; valores: unknown[] } {
   // Una tarea de un expediente dado de baja no se muestra: el expediente ya no
   // está en ningún listado y la tarea quedaría huérfana a la vista.
   const partes: string[] = ['(t.causa_id IS NULL OR c.eliminado_en IS NULL)'];
@@ -69,6 +70,15 @@ function condiciones(filtros: FiltrosTarea): { sql: string; valores: unknown[] }
     valores.push(valor);
     partes.push(sql(valores.length));
   };
+
+  // Con alcance acotado: las tareas sin expediente, las de sus expedientes y
+  // las que le delegaron a él aunque el expediente no sea suyo.
+  if (alcance) {
+    agregar(
+      (n) => `(t.asignada_a = $${n}::uuid OR ${sqlCausaOpcionalEnAlcance('t.causa_id', `$${n}`)})`,
+      alcance,
+    );
+  }
 
   if (filtros.estado) agregar((n) => `t.estado = $${n}`, filtros.estado);
   if (filtros.asignada) agregar((n) => `t.asignada_a = $${n}`, filtros.asignada);
@@ -88,8 +98,8 @@ function condiciones(filtros: FiltrosTarea): { sql: string; valores: unknown[] }
   return { sql: partes.join('\n     AND '), valores };
 }
 
-export async function listar(filtros: FiltrosTarea): Promise<Tarea[]> {
-  const { sql: donde, valores } = condiciones(filtros);
+export async function listar(filtros: FiltrosTarea, alcance: string | null): Promise<Tarea[]> {
+  const { sql: donde, valores } = condiciones(filtros, alcance);
   valores.push(filtros.tamano, desplazamiento(filtros));
 
   const { rows } = await obtenerPool().query<Tarea>(
@@ -107,8 +117,8 @@ export async function listar(filtros: FiltrosTarea): Promise<Tarea[]> {
   return rows;
 }
 
-export async function contar(filtros: FiltrosTarea): Promise<number> {
-  const { sql: donde, valores } = condiciones(filtros);
+export async function contar(filtros: FiltrosTarea, alcance: string | null): Promise<number> {
+  const { sql: donde, valores } = condiciones(filtros, alcance);
   const { rows } = await obtenerPool().query<{ total: string }>(
     `SELECT count(*) AS total ${ORIGEN} WHERE ${donde}`,
     valores,

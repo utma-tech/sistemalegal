@@ -97,6 +97,13 @@ export const config = {
   minutosVentanaLogin: entero('MINUTOS_VENTANA_LOGIN', 15),
 
   /**
+   * Intentos fallidos permitidos por cuenta (correo) en la misma ventana. No
+   * depende de la IP, que detrás de proxies se puede falsificar. Ver
+   * modulos/auth/rutas.ts.
+   */
+  intentosLoginPorCuenta: entero('INTENTOS_LOGIN_POR_CUENTA', 10),
+
+  /**
    * SameSite de la cookie del refresh token en producción. `lax` cuando el
    * frontend reenvía /api con el proxy de Vercel (la cookie es de primera
    * parte); `none` solo si la API se consume desde otro sitio.
@@ -130,6 +137,18 @@ export const config = {
    */
   prefijoPreviewVercel: process.env.CORS_PREFIJO_PREVIEW ?? 'sistemalegal',
 
+  /**
+   * Slug del equipo de Vercel (lo que va al final del subdominio de un preview:
+   * sistemalegal-abc123-<slug>.vercel.app). El prefijo solo no alcanza: el
+   * nombre del proyecto lo elige cualquiera, así que cualquier cuenta de Vercel
+   * puede publicar un `sistemalegal-loquesea.vercel.app`. El slug del equipo,
+   * en cambio, solo lo genera Vercel para los despliegues del equipo.
+   *
+   * Si está definido, un preview tiene que terminar en `-<slug>`. Si falta, se
+   * mantiene el criterio anterior (solo prefijo) y en producción se avisa en el log.
+   */
+  sufijoEquipoVercel: process.env.CORS_SUFIJO_EQUIPO?.trim().toLowerCase() || undefined,
+
   /** Tope de filas que devuelve el listado, para no traer la base entera. */
   limiteListados: entero('LIMITE_LISTADOS', 50),
 } as const;
@@ -139,7 +158,7 @@ const DOMINIO_VERCEL = '.vercel.app';
 export function origenAutorizado(origen: string): boolean {
   if (config.origenesPermitidos.includes(origen)) return true;
   if (config.entorno === 'development' && esLocal(origen)) return true;
-  return esPreviewDeVercel(origen);
+  return esPreviewDeVercel(origen, config.prefijoPreviewVercel, config.sufijoEquipoVercel);
 }
 
 /**
@@ -165,7 +184,7 @@ function esLocal(origen: string): boolean {
  * se note, y un punto mal escapado convierte `.vercel.app` en un comodín que
  * matchea cualquier carácter.
  */
-function esPreviewDeVercel(origen: string): boolean {
+export function esPreviewDeVercel(origen: string, prefijo: string, sufijoEquipo?: string): boolean {
   let url: URL;
   try {
     url = new URL(origen);
@@ -181,6 +200,19 @@ function esPreviewDeVercel(origen: string): boolean {
   // Un solo nivel: descarta cosas como sistemalegal.ajeno.vercel.app.
   if (subdominio.length === 0 || subdominio.includes('.')) return false;
 
-  const prefijo = config.prefijoPreviewVercel;
-  return subdominio === prefijo || subdominio.startsWith(`${prefijo}-`);
+  if (subdominio === prefijo) return true;
+  if (!subdominio.startsWith(`${prefijo}-`)) return false;
+  if (!sufijoEquipo) return true;
+
+  // prefijo-<algo>-<slug>: el tramo del medio no puede quedar vacío, o
+  // "sistemalegal-utma" pasaría como preview sin serlo.
+  const resto = subdominio.slice(prefijo.length + 1);
+  return resto.length > sufijoEquipo.length + 1 && resto.endsWith(`-${sufijoEquipo}`);
+}
+
+if (config.entorno === 'production' && !config.sufijoEquipoVercel) {
+  console.warn(
+    `[config] CORS_SUFIJO_EQUIPO no está definida: se autoriza cualquier ${config.prefijoPreviewVercel}-*.vercel.app, ` +
+      'incluso proyectos de otras cuentas de Vercel. Definila con el slug del equipo.',
+  );
 }

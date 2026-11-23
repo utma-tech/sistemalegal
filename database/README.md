@@ -24,11 +24,12 @@ database/
 │   ├── 009_operacion.sql
 │   ├── 010_ia.sql
 │   ├── 011_auditoria.sql
-│   └── 012_vistas.sql
+│   ├── 012_vistas.sql
+│   └── 013_rls_y_roles_publicos.sql
 ├── seed/
 │   ├── 001_catalogos.sql    Configuración base (necesaria para operar)
 │   └── 002_datos_demo.sql   Datos FICTICIOS de demostración
-└── schema.sql           Esquema consolidado: las 12 migraciones en un archivo
+└── schema.sql           Esquema consolidado: las 13 migraciones en un archivo
 ```
 
 **Las migraciones son la fuente de verdad.** `schema.sql` es la concatenación de

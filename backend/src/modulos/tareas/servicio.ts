@@ -6,8 +6,11 @@ import type { DatosTarea, FiltrosTarea } from './esquemas';
 
 /** Reglas del módulo de tareas. */
 
-export async function listar(filtros: FiltrosTarea): Promise<Pagina<Tarea>> {
-  const [datos, total] = await Promise.all([repositorio.listar(filtros), repositorio.contar(filtros)]);
+export async function listar(filtros: FiltrosTarea, alcance: string | null): Promise<Pagina<Tarea>> {
+  const [datos, total] = await Promise.all([
+    repositorio.listar(filtros, alcance),
+    repositorio.contar(filtros, alcance),
+  ]);
   return armarPagina(datos, total, filtros);
 }
 
@@ -25,7 +28,10 @@ export async function exigir(id: string): Promise<Tarea> {
  * expediente se rechaza: la tarea apareceria en un expediente y vigilaría el
  * vencimiento de otro.
  */
-async function validarReferencias(datos: DatosTarea): Promise<DatosTarea> {
+/** Decide si quien pide puede colgar la tarea de ese expediente (ver comun/alcance.ts). */
+export type VerificadorCausa = (causaId: string) => Promise<boolean>;
+
+async function validarReferencias(datos: DatosTarea, puedeUsarCausa: VerificadorCausa): Promise<DatosTarea> {
   const errores: Record<string, string[]> = {};
   let causaId = datos.causa_id;
 
@@ -37,7 +43,8 @@ async function validarReferencias(datos: DatosTarea): Promise<DatosTarea> {
     } else causaId = causaDelPlazo;
   }
 
-  if (causaId && !(await repositorio.causaVigente(causaId))) {
+  // Un expediente fuera del alcance responde igual que uno inexistente.
+  if (causaId && (!(await repositorio.causaVigente(causaId)) || !(await puedeUsarCausa(causaId)))) {
     errores.causa_id = ['Ese expediente no existe o fue dado de baja.'];
   }
 
@@ -52,14 +59,21 @@ async function validarReferencias(datos: DatosTarea): Promise<DatosTarea> {
   return { ...datos, causa_id: causaId };
 }
 
-export async function crear(datos: DatosTarea, usuarioId: string): Promise<Tarea> {
-  const id = await repositorio.crear(await validarReferencias(datos), usuarioId);
+export async function crear(datos: DatosTarea, usuarioId: string, puedeUsarCausa: VerificadorCausa): Promise<Tarea> {
+  const id = await repositorio.crear(await validarReferencias(datos, puedeUsarCausa), usuarioId);
   return exigir(id);
 }
 
-export async function editar(id: string, datos: DatosTarea): Promise<{ antes: Tarea; despues: Tarea }> {
+export async function editar(
+  id: string,
+  datos: DatosTarea,
+  puedeUsarCausa: VerificadorCausa,
+): Promise<{ antes: Tarea; despues: Tarea }> {
   const antes = await exigir(id);
-  await repositorio.actualizar(id, await validarReferencias(datos));
+  // Conservar el expediente que ya tenía no es ampliar el alcance: una tarea
+  // delegada en una causa ajena se puede seguir editando.
+  const verificar: VerificadorCausa = async (causa) => causa === antes.causa_id || puedeUsarCausa(causa);
+  await repositorio.actualizar(id, await validarReferencias(datos, verificar));
   return { antes, despues: await exigir(id) };
 }
 

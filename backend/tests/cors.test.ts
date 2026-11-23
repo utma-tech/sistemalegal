@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { origenAutorizado, config } from '../src/config';
+import { origenAutorizado, esPreviewDeVercel, config } from '../src/config';
 
 /**
  * La allowlist de CORS es lo único que separa a la API de que cualquier sitio
@@ -46,6 +46,29 @@ describe('origenAutorizado', () => {
   it('rechaza basura que no es una URL', () => {
     expect(origenAutorizado('null')).toBe(false);
     expect(origenAutorizado('')).toBe(false);
+  });
+
+  describe('con CORS_SUFIJO_EQUIPO definido', () => {
+    const equipo = 'utma';
+
+    it('autoriza los previews del equipo', () => {
+      expect(esPreviewDeVercel('https://sistemalegal-abc123-utma.vercel.app', 'sistemalegal', equipo)).toBe(true);
+      expect(esPreviewDeVercel('https://sistemalegal-git-rama-utma.vercel.app', 'sistemalegal', equipo)).toBe(true);
+    });
+
+    it('sigue autorizando el dominio exacto del proyecto', () => {
+      expect(esPreviewDeVercel('https://sistemalegal.vercel.app', 'sistemalegal', equipo)).toBe(true);
+    });
+
+    it('rechaza un proyecto homónimo de otra cuenta de Vercel', () => {
+      expect(esPreviewDeVercel('https://sistemalegal-atacante.vercel.app', 'sistemalegal', equipo)).toBe(false);
+      expect(esPreviewDeVercel('https://sistemalegal-abc123-otroequipo.vercel.app', 'sistemalegal', equipo)).toBe(false);
+    });
+
+    it('rechaza el slug pegado sin tramo intermedio', () => {
+      expect(esPreviewDeVercel('https://sistemalegal-utma.vercel.app', 'sistemalegal', equipo)).toBe(false);
+      expect(esPreviewDeVercel('https://sistemalegal--utma.vercel.app', 'sistemalegal', equipo)).toBe(false);
+    });
   });
 
   it('autoriza lo que esté explícitamente en CORS_ORIGIN', () => {

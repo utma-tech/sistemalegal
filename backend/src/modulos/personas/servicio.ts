@@ -16,11 +16,11 @@ export interface DetallePersona {
   causas: CausaDePersona[];
 }
 
-export async function obtenerDetalle(id: string): Promise<DetallePersona> {
+export async function obtenerDetalle(id: string, alcance: string | null): Promise<DetallePersona> {
   const persona = await repositorio.buscarPorId(id);
   if (!persona) throw new ErrorNoEncontrado('No encontramos esa persona en la agenda.');
 
-  return { persona, causas: await repositorio.causasDe(id) };
+  return { persona, causas: await repositorio.causasDe(id, alcance) };
 }
 
 /** El documento solo se puede chequear si vienen las dos partes. */

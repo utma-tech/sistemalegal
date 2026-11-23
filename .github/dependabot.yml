@@ -1,0 +1,34 @@
+# Actualizaciones automáticas de dependencias.
+#
+# Dependabot abre un PR por semana y por ecosistema cuando hay versiones
+# nuevas, y en el acto cuando sale un aviso de seguridad. Los PR pasan por la
+# misma CI que el resto, así que una actualización que rompe algo no se mergea.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      dependencias:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      dependencias:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /pdf-service
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
