@@ -136,7 +136,9 @@ export function BarraLateral({
         </NavLink>
 
         <div className="barra-lateral__pie-fila">
-          <span className="barra-lateral__creditos">Powered by UTMA Technologies</span>
+          <a className="barra-lateral__creditos" href="https://utma.io" target="_blank" rel="noopener noreferrer">
+            Powered by UTMA Technologies
+          </a>
           <Boton
             variante="sutil"
             pequeno
