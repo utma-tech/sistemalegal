@@ -316,6 +316,8 @@ export async function bandeja(
         ? fila
         : {
             ...fila,
+            // El título también puede nombrar al evento ("Recordatorio: …"): se oculta igual.
+            titulo: 'Aviso sin acceso',
             mensaje: 'Aviso sobre un expediente o evento al que ya no tenés acceso.',
             causa_id: null,
             evento_id: null,

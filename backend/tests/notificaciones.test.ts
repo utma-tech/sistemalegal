@@ -310,6 +310,29 @@ describe.skipIf(!hayBase)('cola de entregas', () => {
     }
   });
 
+  it('un aviso ya entregado no revela el evento si se pierde el acceso', async () => {
+    const catalogos = await conSesion(request(app).get('/api/catalogos'), admin);
+    const causa = await conSesion(request(app).post('/api/causas'), admin).send({
+      caratula: `${PREFIJO_PRUEBA}NOTIF2 ${Date.now()}`,
+      fuero_id: catalogos.body.fueros[0].id,
+      estado_causa_id: catalogos.body.estados[0].id,
+      fecha_inicio: '2026-02-01',
+    });
+    const causaId = causa.body.causa.id as string;
+    await asignarAExpediente(app, admin, causaId, empleado.usuario.id);
+    const evento = await crearEvento(admin, { causa_id: causaId, participantes: [empleado.usuario.id] });
+
+    const antes = await conSesion(request(app).get('/api/notificaciones'), empleado);
+    expect(JSON.stringify(antes.body)).toContain(evento.titulo);
+
+    await obtenerPool().query(
+      'UPDATE profesional_causa SET fecha_baja = CURRENT_DATE WHERE causa_id = $1 AND usuario_id = $2',
+      [causaId, empleado.usuario.id],
+    );
+    const despues = await conSesion(request(app).get('/api/notificaciones'), empleado);
+    expect(JSON.stringify(despues.body)).not.toContain(evento.titulo);
+  });
+
   it('no entrega a un usuario dado de baja', async () => {
     usarProveedorDePrueba(crearProveedorSimulado());
     const inactivo = await crearUsuarioInactivo();
