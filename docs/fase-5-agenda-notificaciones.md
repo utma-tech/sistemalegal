@@ -381,7 +381,7 @@ Supabase estén en planes pagos (sin siesta ni pausa).
 
 | Conjunto | Resultado |
 |---|---|
-| Backend (Vitest + Supertest + PostgreSQL local) | **223 pruebas**: 183 existentes + 40 nuevas (`agenda.test.ts`, `notificaciones.test.ts`). Pasaron 223/223 en la corrida de las 13:2x. En la corrida final, una prueba **existente** (`el admin da de alta a alguien…`) excedió su límite de 5 s porque la CPU de la máquina estaba al 100 % por un proceso ajeno (un hash bcrypt tardaba ~1 s en lugar de ~0,25 s). Ver sección 13. |
+| Backend (Vitest + Supertest + PostgreSQL local) | **223 pruebas**: 183 existentes + 40 nuevas (`agenda.test.ts`, `notificaciones.test.ts`). Pasaron 223/223 en la corrida de las 13:2x. En la corrida final, una prueba **existente** (`el admin da de alta a alguien…`) excedió su límite de 5 s porque la CPU de la máquina estaba al 100 % por un proceso ajeno (un hash bcrypt tardaba ~1 s en lugar de ~0,25 s). Corrida sola, su archivo pasa 15/15. Resultado final de la suite completa con la máquina cargada: 222/223. Ver sección 13. |
 | Frontend (Vitest) | **15/15** (8 existentes + 7 de `calendario.test.ts`). |
 | Typecheck backend y frontend | Sin errores. |
 | Build backend y frontend | Correcto (el aviso de chunk > 500 kB del frontend es previo). |
