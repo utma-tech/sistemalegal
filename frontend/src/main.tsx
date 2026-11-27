@@ -7,6 +7,7 @@ import './estilos/tokens.css';
 import './estilos/base.css';
 import './estilos/componentes.css';
 import './estilos/estructura.css';
+import './estilos/agenda.css';
 
 /**
  * Punto de entrada.

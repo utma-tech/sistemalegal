@@ -74,6 +74,25 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         value: documentos
+      # Agenda y notificaciones (fase 5, docs/fase-5-agenda-notificaciones.md).
+      # El correo queda DESHABILITADO hasta configurar y validar proveedor,
+      # dominio y programador: no se envía nada real por defecto.
+      - key: ZONA_HORARIA
+        value: America/Argentina/Buenos_Aires
+      - key: CORREO_MODO
+        value: deshabilitado
+      - key: CORREO_PROVEEDOR
+        value: resend
+      - key: CORREO_REMITENTE
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      # Secreto del programador externo (Supabase Cron llama a
+      # /api/interno/programador). 48+ caracteres, distinto de JWT_SECRET.
+      - key: CRON_SECRET
+        sync: false
 
   - type: web
     name: sistemalegal-utma-pdf

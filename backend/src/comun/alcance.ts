@@ -27,6 +27,14 @@ export function tieneAlcanceRestringido(sesion: SesionUsuario): boolean {
 }
 
 /**
+ * Lo mismo a partir del código de rol, para decidir sobre un usuario que no es
+ * el de la sesión (el destinatario de un aviso, el participante de un evento).
+ */
+export function rolConAlcanceGeneral(codigoRol: string): boolean {
+  return ROLES_SIN_RESTRICCION.has(codigoRol);
+}
+
+/**
  * Id del usuario cuyo alcance hay que aplicar, o `null` si ve todo.
  *
  * Es el valor que reciben los filtros SQL de abajo como parámetro: `null`
@@ -60,6 +68,31 @@ export function sqlCausaEnAlcance(columna: string, parametro: string): string {
  */
 export function sqlCausaOpcionalEnAlcance(columna: string, parametro: string): string {
   return `(${columna} IS NULL OR ${sqlCausaEnAlcance(columna, parametro)})`;
+}
+
+/**
+ * Condición SQL: el evento de agenda `alias` es visible para el usuario del
+ * parámetro `usuario`, con el alcance del parámetro `alcance`.
+ *
+ * Dos controles, los dos obligatorios:
+ *  1. Visibilidad propia del evento. ESTUDIO lo ve cualquiera; PERSONAL, solo
+ *     quien lo creó y su responsable; PARTICIPANTES, además los convocados. Un
+ *     evento sin expediente NO es público por no tener expediente.
+ *  2. Alcance por expediente: si cuelga de una causa, hay que poder verla. Ser
+ *     responsable o participante de un evento no abre un expediente ajeno.
+ *
+ * Ni Administrador ni Jefe de Estudio ven los eventos personales de otros: el
+ * alcance general es sobre expedientes, no sobre la agenda privada de cada uno.
+ */
+export function sqlEventoVisible(alias: string, usuario: string, alcance: string): string {
+  return `((${alias}.visibilidad = 'ESTUDIO'
+            OR ${alias}.creado_por = ${usuario}::uuid
+            OR ${alias}.responsable_id = ${usuario}::uuid
+            OR (${alias}.visibilidad = 'PARTICIPANTES' AND EXISTS (
+                  SELECT 1 FROM evento_participante ep_vis
+                   WHERE ep_vis.evento_id = ${alias}.id
+                     AND ep_vis.usuario_id = ${usuario}::uuid)))
+           AND ${sqlCausaOpcionalEnAlcance(`${alias}.causa_id`, alcance)})`;
 }
 
 export async function puedeAccederACausa(req: Request, causaId: string): Promise<boolean> {

@@ -18,6 +18,12 @@ import { rutasCuenta, rutasUsuarios } from './modulos/usuarios/rutas';
 import { rutasCostas, rutasCostasDeCausa } from './modulos/costas/rutas';
 import { rutasDocumentos, rutasDocumentosDeCausa } from './modulos/documentos/rutas';
 import { rutasAuditoria } from './modulos/auditoria/rutas';
+import { rutasAgenda } from './modulos/agenda/rutas';
+import {
+  rutasAdministracionNotificaciones,
+  rutasPreferencias,
+  rutasProgramador,
+} from './modulos/notificaciones/rutas';
 import { manejadorErrores, noEncontrado } from './middlewares/manejador-errores';
 import { ErrorAutorizacion } from './comun/errores';
 
@@ -86,6 +92,10 @@ export function crearApp(): Express {
 
   app.use('/api/auth', rutasAuth);
 
+  // Programador externo de avisos: no tiene sesión de usuario, lo protege su
+  // propio secreto (CRON_SECRET). Ver modulos/notificaciones/rutas.ts.
+  app.use('/api/interno', rutasProgramador);
+
   // Todo lo que sigue exige sesión. Se aplica acá y no ruta por ruta para que
   // agregar un módulo nuevo no pueda olvidarse de protegerlo.
   app.use('/api', requiereSesion);
@@ -105,9 +115,12 @@ export function crearApp(): Express {
   app.use('/api/catalogos', rutasCatalogos);
   app.use('/api/tareas', rutasTareas);
   app.use('/api/calendario', rutasCalendario);
+  app.use('/api/agenda', rutasAgenda);
   app.use('/api/alertas', rutasAlertas);
+  app.use('/api/notificaciones/administracion', rutasAdministracionNotificaciones);
   app.use('/api/notificaciones', rutasNotificaciones);
   app.use('/api/usuarios', rutasUsuarios);
+  app.use('/api/cuenta/notificaciones', rutasPreferencias);
   app.use('/api/cuenta', rutasCuenta);
   app.use('/api/costas', rutasCostas);
   app.use('/api/documentos', rutasDocumentos);

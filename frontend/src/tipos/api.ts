@@ -434,6 +434,8 @@ export interface Notificacion {
   mensaje: string;
   nivel: NivelAlerta | null;
   causa_id: string | null;
+  /** Aviso de un evento de agenda: la campana abre su detalle. */
+  evento_id: string | null;
   leida_en: string | null;
   creado_en: string;
 }
@@ -534,4 +536,204 @@ export interface EventoAuditoria {
 
 export interface PaginaAuditoria extends Pagina<EventoAuditoria> {
   entidades: string[];
+}
+
+/* --- Agenda jurídica -------------------------------------------------------- */
+
+export type TipoEvento = 'AUDIENCIA' | 'MEDIACION' | 'REUNION' | 'VENCIMIENTO' | 'OTRO';
+export type TipoAgenda = TipoEvento | 'PLAZO' | 'TAREA' | 'INHABIL';
+export type EstadoEvento = 'PENDIENTE' | 'CONFIRMADO' | 'COMPLETADO' | 'CANCELADO';
+export type VisibilidadEvento = 'PERSONAL' | 'PARTICIPANTES' | 'ESTUDIO';
+export type PrioridadEvento = 'ALTA' | 'MEDIA' | 'BAJA';
+
+/** Elemento de la agenda, venga de donde venga. Las horas son de pared del estudio. */
+export interface ItemAgenda {
+  clave: string;
+  origen: 'EVENTO' | 'PLAZO' | 'TAREA' | 'DIA_INHABIL';
+  id: string;
+  tipo: TipoAgenda;
+  titulo: string;
+  /** `YYYY-MM-DDTHH:mm` con hora; `YYYY-MM-DD` si es de día completo. */
+  inicio: string;
+  fin: string;
+  todo_el_dia: boolean;
+  estado: string;
+  prioridad: string | null;
+  responsable_id: string | null;
+  responsable: string | null;
+  causa_id: string | null;
+  caratula: string | null;
+  numero_expediente: string | null;
+  lugar: string | null;
+  nivel: NivelAlerta | null;
+  ruta: string;
+  editable: boolean;
+}
+
+export interface RespuestaAgenda {
+  desde: string;
+  hasta: string;
+  /** Hoy y ahora en la zona del estudio (no la del navegador). */
+  hoy: string;
+  ahora: string;
+  zona: string;
+  datos: ItemAgenda[];
+}
+
+export interface EventoAgenda {
+  id: string;
+  titulo: string;
+  tipo: TipoEvento;
+  descripcion: string | null;
+  prioridad: PrioridadEvento;
+  estado: EstadoEvento;
+  visibilidad: VisibilidadEvento;
+  todo_el_dia: boolean;
+  fecha_inicio: string;
+  hora_inicio: string;
+  fecha_fin: string;
+  hora_fin: string;
+  lugar: string | null;
+  enlace_virtual: string | null;
+  observaciones: string | null;
+  causa_id: string | null;
+  caratula: string | null;
+  numero_expediente: string | null;
+  persona_id: string | null;
+  persona: string | null;
+  responsable_id: string | null;
+  responsable: string | null;
+  creado_por_id: string | null;
+  creado_por: string | null;
+  creado_en: string;
+  actualizado_en: string;
+  actualizado_por: string | null;
+  cancelado_en: string | null;
+  motivo_cancelacion: string | null;
+  completado_en: string | null;
+  version: number;
+  participantes: { id: string; nombre: string }[];
+  recordatorios: number[];
+  puede_editar: boolean;
+  puede_cancelar: boolean;
+}
+
+export interface DatosEvento {
+  titulo: string;
+  tipo: TipoEvento;
+  descripcion?: string;
+  prioridad: PrioridadEvento;
+  todo_el_dia: boolean;
+  fecha_inicio: string;
+  hora_inicio?: string;
+  fecha_fin?: string;
+  hora_fin?: string;
+  causa_id?: string;
+  persona_id?: string;
+  responsable_id?: string;
+  participantes: string[];
+  lugar?: string;
+  enlace_virtual?: string;
+  observaciones?: string;
+  visibilidad: VisibilidadEvento;
+  recordatorios: number[];
+}
+
+export interface ConflictoHorario {
+  id: string;
+  titulo: string;
+  inicio: string;
+  fin: string;
+}
+
+export interface Conflictos {
+  conflictos: ConflictoHorario[];
+  ocultos: number;
+}
+
+export interface EntradaHistorialEvento {
+  id: string;
+  accion: 'CREADO' | 'EDITADO' | 'REPROGRAMADO' | 'CONFIRMADO' | 'COMPLETADO' | 'CANCELADO' | 'REABIERTO';
+  detalle: {
+    antes?: { inicio: string; fin: string; todo_el_dia: boolean };
+    despues?: { inicio: string; fin: string; todo_el_dia: boolean };
+    campos?: string[];
+    estado_anterior?: string;
+    estado?: string;
+  };
+  motivo: string | null;
+  usuario: string | null;
+  creado_en: string;
+}
+
+/* --- Notificaciones ---------------------------------------------------------- */
+
+export interface PreferenciasNotificacion {
+  correo_habilitado: boolean;
+  recordatorio_audiencia: boolean;
+  recordatorio_mediacion: boolean;
+  recordatorio_reunion: boolean;
+  recordatorio_otros: boolean;
+  aviso_plazos: boolean;
+  aviso_asignaciones: boolean;
+  aviso_reprogramaciones: boolean;
+  aviso_cancelaciones: boolean;
+}
+
+export interface RespuestaPreferencias {
+  preferencias: PreferenciasNotificacion;
+  correo_del_estudio: 'activo' | 'inactivo';
+}
+
+export interface EjecucionProgramador {
+  iniciado_en: string;
+  finalizado_en: string | null;
+  origen: 'PROGRAMADOR' | 'MANUAL';
+  procesados: number;
+  aceptados: number;
+  fallidos?: number;
+  cancelados?: number;
+  error?: string | null;
+}
+
+export interface EnvioFallido {
+  id: string;
+  tipo: string;
+  canal: 'IN_APP' | 'EMAIL';
+  intentos: number;
+  ultimo_error: string | null;
+  creado_en: string;
+  procesado_en: string | null;
+  destinatario: string;
+}
+
+export interface EstadoNotificaciones {
+  correo: {
+    modo: 'deshabilitado' | 'simulado' | 'real';
+    modo_pedido: 'deshabilitado' | 'simulado' | 'real';
+    proveedor: string;
+    remitente_configurado: boolean;
+    app_url_configurada: boolean;
+    faltantes: string[];
+  };
+  programador: {
+    configurado: boolean;
+    ultima_ejecucion: EjecucionProgramador | null;
+    ultima_exitosa: EjecucionProgramador | null;
+    atrasado: boolean;
+    minutos_atraso: number;
+  };
+  cola: {
+    por_estado: { estado: string; canal: string; total: number }[];
+    vencidos_sin_procesar: number;
+  };
+  fallidos: EnvioFallido[];
+  zona_horaria: string;
+}
+
+export interface VistaPreviaCorreo {
+  plantilla: string;
+  asunto: string;
+  html: string;
+  texto: string;
 }

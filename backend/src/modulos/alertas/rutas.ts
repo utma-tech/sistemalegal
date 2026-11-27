@@ -5,6 +5,7 @@ import { causasAsignadas, usuarioAcotado } from '../../comun/alcance';
 import { consultaValidada, validarConsulta } from '../../middlewares/validacion';
 import { idDeRuta } from '../../comun/ruta';
 import * as servicio from './servicio';
+import { procesarCola } from '../notificaciones/cola';
 
 /**
  * Alertas de vencimiento (`/api/alertas`) y bandeja de notificaciones
@@ -58,7 +59,13 @@ export const rutasNotificaciones = Router();
 
 rutasNotificaciones.get('/', async (req: Request, res: Response) => {
   await servicio.evaluarSiCorresponde();
-  res.json(await servicio.bandeja(req.sesion!.id));
+  // Los avisos internos de la agenda que ya llegaron a su hora se entregan al
+  // abrir la bandeja, aunque el programador externo no haya corrido todavía.
+  // Solo los de este usuario y por este canal: el correo es del programador.
+  await procesarCola({ usuarioId: req.sesion!.id, soloCanal: 'IN_APP', limite: 20 }).catch((error: unknown) => {
+    console.error('[notificaciones] no se pudieron entregar los avisos pendientes', error);
+  });
+  res.json(await servicio.bandeja(req.sesion!.id, usuarioAcotado(req)));
 });
 
 rutasNotificaciones.post('/leer-todas', async (req: Request, res: Response) => {

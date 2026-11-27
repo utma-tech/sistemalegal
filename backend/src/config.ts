@@ -151,7 +151,98 @@ export const config = {
 
   /** Tope de filas que devuelve el listado, para no traer la base entera. */
   limiteListados: entero('LIMITE_LISTADOS', 50),
+
+  /**
+   * Zona horaria operativa del estudio. Decide qué día es "hoy" para el cómputo
+   * de alertas y en qué hora de pared se muestran y programan los eventos. No
+   * se toma de la zona del servidor: Render corre en UTC y a las 21 h de
+   * Argentina ya sería mañana.
+   */
+  zonaHoraria: zonaHoraria(),
+
+  /** URL pública de la aplicación, para los enlaces de los correos. */
+  urlAplicacion: process.env.APP_URL?.trim().replace(/\/+$/, '') || undefined,
+
+  /**
+   * Secreto del programador externo que llama a /api/interno/programador. Sin
+   * él (o con menos de 32 caracteres) el endpoint responde 503: nunca queda
+   * abierto sin protección.
+   */
+  secretoProgramador: secretoProgramador(),
+
+  correo: configuracionCorreo(),
 } as const;
+
+function zonaHoraria(): string {
+  const zona = process.env.ZONA_HORARIA?.trim() || 'America/Argentina/Buenos_Aires';
+  try {
+    new Intl.DateTimeFormat('es-AR', { timeZone: zona });
+  } catch {
+    throw new Error(`ZONA_HORARIA no es una zona horaria IANA válida: "${zona}"`);
+  }
+  return zona;
+}
+
+function secretoProgramador(): string | undefined {
+  const secreto = process.env.CRON_SECRET?.trim();
+  if (!secreto) return undefined;
+  if (secreto.length < 32) {
+    console.warn('[config] CRON_SECRET tiene menos de 32 caracteres: el programador queda deshabilitado.');
+    return undefined;
+  }
+  return secreto;
+}
+
+export type ModoCorreo = 'deshabilitado' | 'simulado' | 'real';
+
+/**
+ * Correo electrónico.
+ *
+ * Tres modos (CORREO_MODO):
+ *  - deshabilitado (por defecto): no se envía nada; los avisos por correo que
+ *    llegan a su hora se cancelan, así que habilitarlo después no dispara una
+ *    tanda de correos viejos.
+ *  - simulado: el mensaje se arma completo y se registra, pero no sale.
+ *  - real: se envía por el proveedor (hoy Resend). Si falta la clave, el
+ *    remitente o APP_URL, se comporta como deshabilitado y lo avisa.
+ *
+ * En pruebas (NODE_ENV=test) el modo real se degrada a simulado: una corrida
+ * de tests nunca puede mandar correo a un destinatario real.
+ */
+function configuracionCorreo() {
+  const pedido = (process.env.CORREO_MODO?.trim().toLowerCase() || 'deshabilitado') as string;
+  const modos: ModoCorreo[] = ['deshabilitado', 'simulado', 'real'];
+  if (!modos.includes(pedido as ModoCorreo)) {
+    throw new Error(`CORREO_MODO debe ser deshabilitado, simulado o real; llegó "${pedido}"`);
+  }
+  const proveedor = process.env.CORREO_PROVEEDOR?.trim().toLowerCase() || 'resend';
+  const remitente = process.env.CORREO_REMITENTE?.trim() || undefined;
+  const claveResend = process.env.RESEND_API_KEY?.trim() || undefined;
+  const urlAplicacion = process.env.APP_URL?.trim() || undefined;
+
+  let modo = pedido as ModoCorreo;
+  const faltantes: string[] = [];
+  if (modo === 'real') {
+    if (proveedor !== 'resend') faltantes.push('CORREO_PROVEEDOR (solo se admite resend)');
+    if (!claveResend) faltantes.push('RESEND_API_KEY');
+    if (!remitente) faltantes.push('CORREO_REMITENTE');
+    if (!urlAplicacion) faltantes.push('APP_URL');
+    if ((process.env.NODE_ENV ?? '') === 'test') modo = 'simulado';
+    else if (faltantes.length > 0) {
+      console.warn(`[config] CORREO_MODO=real sin ${faltantes.join(', ')}: el correo queda deshabilitado.`);
+      modo = 'deshabilitado';
+    }
+  }
+
+  return {
+    modoPedido: pedido as ModoCorreo,
+    modo,
+    proveedor,
+    remitente: remitente ?? 'SistemaLegal <avisos@sistemalegal.invalid>',
+    claveResend,
+    faltantes,
+  };
+}
 
 const DOMINIO_VERCEL = '.vercel.app';
 

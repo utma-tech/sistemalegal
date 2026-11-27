@@ -25,17 +25,19 @@ database/
 │   ├── 010_ia.sql
 │   ├── 011_auditoria.sql
 │   ├── 012_vistas.sql
-│   └── 013_rls_y_roles_publicos.sql
+│   ├── 013_rls_y_roles_publicos.sql
+│   └── 014_agenda_y_correo.sql
 ├── seed/
 │   ├── 001_catalogos.sql    Configuración base (necesaria para operar)
 │   └── 002_datos_demo.sql   Datos FICTICIOS de demostración
-└── schema.sql           Esquema consolidado: las 13 migraciones en un archivo
+└── schema.sql           Esquema consolidado: las 14 migraciones en un archivo
 ```
 
 **Las migraciones son la fuente de verdad.** `schema.sql` es la concatenación de
 todas, para poder leer o aplicar el esquema completo de una sola vez.
 
-Resumen: **34 tablas · 3 vistas · 58 claves foráneas · 2 funciones.**
+Resumen: **41 tablas · 3 vistas · 73 claves foráneas · 2 funciones** (la migración 014 suma 7 tablas de
+agenda y notificaciones; ver [`../docs/fase-5-agenda-notificaciones.md`](../docs/fase-5-agenda-notificaciones.md)).
 
 ---
 

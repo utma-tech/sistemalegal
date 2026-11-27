@@ -41,7 +41,8 @@ export function BandejaNotificaciones() {
   function abrir(notificacion: Notificacion) {
     if (!notificacion.leida_en) marcar.mutate(notificacion.id);
     setAbierta(false);
-    if (notificacion.causa_id) navegar(`/expedientes/${notificacion.causa_id}?pestana=plazos`);
+    if (notificacion.evento_id) navegar(`/agenda?evento=${notificacion.evento_id}`);
+    else if (notificacion.causa_id) navegar(`/expedientes/${notificacion.causa_id}?pestana=plazos`);
   }
 
   const noLeidas = data?.no_leidas ?? 0;

@@ -1,292 +1,369 @@
-import { useCallback, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AlarmClock, FilterX } from 'lucide-react';
-import { useCatalogos, usePlazos } from '../../servicios/consultas';
-import type { FiltrosPlazo } from '../../servicios/consultas';
-import type { PlazoListado } from '../../tipos/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, FilterX, PanelRightClose, PanelRightOpen, Plus, SlidersHorizontal } from 'lucide-react';
+import { useAgenda, type FiltrosAgenda } from '../../servicios/consultasAgenda';
+import { useCatalogos } from '../../servicios/consultas';
+import type { EventoAgenda, ItemAgenda } from '../../tipos/api';
 import { useSesion } from '../auth/ContextoSesion';
-import { enDias, fecha as formatearFecha, fechaLarga } from '../../lib/formato';
 import { CabeceraPagina } from '../../componentes/ui/CabeceraPagina';
-import { Tarjeta } from '../../componentes/ui/Tarjeta';
 import { Boton } from '../../componentes/ui/Boton';
 import { FiltroSelect } from '../../componentes/ui/Campo';
-import { Paginacion } from '../../componentes/ui/Paginacion';
-import { EstadoPlazo, Etiqueta, Vencimiento } from '../../componentes/ui/Etiqueta';
-import { ErrorCarga, EsqueletoLista, Vacio } from '../../componentes/ui/Estados';
-import { TarjetaAlertas } from '../alertas/TarjetaAlertas';
+import { ErrorCarga } from '../../componentes/ui/Estados';
+import {
+  VISTAS,
+  etiquetaPeriodo,
+  hoyLocal,
+  inicioSemana,
+  navegar,
+  rangoVista,
+  sumarDias,
+  type Vista,
+} from './calendario';
+import { VistaHoraria, VistaListado, VistaMes } from './VistasCalendario';
+import { PanelAgenda } from './PanelAgenda';
+import { DialogoEvento } from './DialogoEvento';
+import { ORDEN_TIPOS, TIPOS_AGENDA } from './vocabularioAgenda';
 
 /**
- * Agenda de plazos del estudio.
+ * Agenda jurídica: audiencias, mediaciones, reuniones y vencimientos del
+ * estudio, junto con los plazos procesales y las tareas (que se leen de sus
+ * módulos, no se copian).
  *
- * Responde la pregunta con la que empieza el día: **qué vence y cuándo**.
- * Por eso los plazos no se muestran como una tabla plana ordenada por fecha,
- * sino agrupados por urgencia: lo vencido primero, después lo de hoy, después
- * la semana. Una lista ordenada obliga a leer fechas y restar; los grupos
- * contestan de un vistazo.
+ * No confundir con el calendario judicial (Administración), que es donde se
+ * cargan feriados, ferias y asuetos para el cómputo de plazos.
  *
- * Los filtros viven en la URL, así que "mis plazos de esta semana" se puede
- * guardar como marcador o mandar por mensaje.
+ * Vista, fecha y filtros viven en la URL: "mis audiencias de esta semana" se
+ * puede guardar como marcador, y los enlaces de los avisos (`?evento=<id>`)
+ * abren directamente el detalle.
  */
 
-const TAMANO_PAGINA = 50;
+const CLAVE_PANEL = 'agenda.panel';
 
-const RANGOS: { valor: string; texto: string; dias?: number }[] = [
-  { valor: '7', texto: 'Próximos 7 días', dias: 7 },
-  { valor: '30', texto: 'Próximos 30 días', dias: 30 },
-  { valor: '90', texto: 'Próximos 90 días', dias: 90 },
-  { valor: 'todos', texto: 'Sin límite de fecha' },
+function vistaInicial(): Vista {
+  // En el celular la lista cronológica se lee mejor que una grilla de 7 columnas.
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches ? 'agenda' : 'mes';
+}
+
+const OPCIONES_TIPO = ORDEN_TIPOS.filter((t) => t !== 'INHABIL').map((t) => ({ valor: t, texto: TIPOS_AGENDA[t].texto }));
+const OPCIONES_ESTADO = [
+  { valor: 'PENDIENTE', texto: 'Pendientes' },
+  { valor: 'CONFIRMADO', texto: 'Confirmados' },
+  { valor: 'COMPLETADO', texto: 'Completados' },
+  { valor: 'CANCELADO', texto: 'Cancelados' },
+];
+const OPCIONES_PRIORIDAD = [
+  { valor: 'ALTA', texto: 'Prioridad alta' },
+  { valor: 'MEDIA', texto: 'Prioridad media' },
+  { valor: 'BAJA', texto: 'Prioridad baja' },
 ];
 
-/** Fecha a N días de hoy, en texto `YYYY-MM-DD`, sin corrimiento por zona horaria. */
-function dentroDeDias(dias: number): string {
-  const hoy = new Date();
-  return new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + dias))
-    .toISOString()
-    .slice(0, 10);
-}
-
-type Grupo = { clave: string; titulo: string; descripcion: string; plazos: PlazoListado[] };
-
-/**
- * Agrupa por urgencia.
- *
- * El corte es por días restantes y no por semana del calendario: a un abogado
- * le importa cuánto falta, no si el vencimiento cae antes o después del domingo.
- */
-function agrupar(plazos: PlazoListado[]): Grupo[] {
-  const grupos: Grupo[] = [
-    { clave: 'vencidos', titulo: 'Vencidos', descripcion: 'La fecha ya pasó y el plazo sigue abierto.', plazos: [] },
-    { clave: 'hoy', titulo: 'Vencen hoy', descripcion: 'Última jornada para cumplirlos.', plazos: [] },
-    { clave: 'semana', titulo: 'Esta semana', descripcion: 'Dentro de los próximos siete días.', plazos: [] },
-    { clave: 'despues', titulo: 'Más adelante', descripcion: 'Con más de una semana por delante.', plazos: [] },
-    { clave: 'detenidos', titulo: 'Detenidos', descripcion: 'Suspendidos sin fecha de reanudación.', plazos: [] },
-  ];
-
-  const porClave = new Map(grupos.map((grupo) => [grupo.clave, grupo]));
-
-  for (const plazo of plazos) {
-    // Un plazo suspendido sin reanudar no tiene vencimiento real: mezclarlo con
-    // los demás por su fecha guardada diría algo que no es.
-    if (plazo.suspendido_sin_fin) {
-      porClave.get('detenidos')!.plazos.push(plazo);
-      continue;
-    }
-
-    const dias = plazo.dias_restantes;
-    if (dias === null) porClave.get('despues')!.plazos.push(plazo);
-    else if (dias < 0) porClave.get('vencidos')!.plazos.push(plazo);
-    else if (dias === 0) porClave.get('hoy')!.plazos.push(plazo);
-    else if (dias <= 7) porClave.get('semana')!.plazos.push(plazo);
-    else porClave.get('despues')!.plazos.push(plazo);
-  }
-
-  return grupos.filter((grupo) => grupo.plazos.length > 0);
-}
+const FILTROS = ['tipo', 'responsable', 'estado', 'prioridad', 'alcance', 'completados', 'cancelados', 'causa'] as const;
 
 export function PaginaAgenda() {
+  const { puede } = useSesion();
   const [parametros, setParametros] = useSearchParams();
   const { data: catalogos } = useCatalogos();
-  const { usuario } = useSesion();
 
-  const rango = parametros.get('rango') ?? '30';
-  const responsable = parametros.get('responsable') ?? '';
-  const vigencia = (parametros.get('vigencia') ?? 'abiertos') as FiltrosPlazo['vigencia'];
+  const vista = (VISTAS.some((v) => v.valor === parametros.get('vista')) ? parametros.get('vista') : vistaInicial()) as Vista;
+  const fechaUrl = parametros.get('fecha');
+  const [hoyEstudio, setHoyEstudio] = useState<string>();
+  const fecha = fechaUrl && /^\d{4}-\d{2}-\d{2}$/.test(fechaUrl) ? fechaUrl : (hoyEstudio ?? hoyLocal());
+  const eventoId = parametros.get('evento');
+  const [seleccion, setSeleccion] = useState<ItemAgenda | null>(null);
+  const [panelAbierto, setPanelAbierto] = useState(() => localStorage.getItem(CLAVE_PANEL) !== 'cerrado');
+  const [filtrosVisibles, setFiltrosVisibles] = useState(false);
+  const [dialogo, setDialogo] = useState<{ evento?: EventoAgenda; fecha?: string; hora?: string } | null>(null);
 
-  const filtros = useMemo<FiltrosPlazo>(() => {
-    const dias = RANGOS.find((opcion) => opcion.valor === rango)?.dias;
-    return {
-      pagina: Math.max(1, Number(parametros.get('pagina') ?? 1) || 1),
-      tamano: TAMANO_PAGINA,
-      // Sin `desde`: lo vencido tiene que aparecer, y es lo primero que se mira.
-      hasta: dias === undefined ? undefined : dentroDeDias(dias),
-      responsable: responsable || undefined,
-      vigencia,
-      orden: 'fecha_vencimiento',
-      direccion: 'asc',
-    };
-  }, [parametros, rango, responsable, vigencia]);
-
-  const { data, isPending, isError, error, refetch } = usePlazos(filtros);
-
-  const escribir = useCallback(
-    (cambios: Record<string, string | undefined>, reiniciarPagina = true) => {
-      const siguientes = new URLSearchParams(parametros);
-      for (const [clave, valor] of Object.entries(cambios)) {
-        if (!valor) siguientes.delete(clave);
-        else siguientes.set(clave, valor);
-      }
-      if (reiniciarPagina) siguientes.delete('pagina');
-      setParametros(siguientes, { replace: true });
+  const actualizar = useCallback(
+    (cambios: Record<string, string | null>) => {
+      setParametros(
+        (previos) => {
+          const siguientes = new URLSearchParams(previos);
+          for (const [clave, valor] of Object.entries(cambios)) {
+            if (valor === null || valor === '') siguientes.delete(clave);
+            else siguientes.set(clave, valor);
+          }
+          return siguientes;
+        },
+        { replace: true },
+      );
     },
-    [parametros, setParametros],
+    [setParametros],
   );
 
-  const hayFiltros = rango !== '30' || Boolean(responsable) || vigencia !== 'abiertos';
-  const grupos = agrupar(data?.datos ?? []);
+  const filtros: Omit<FiltrosAgenda, 'desde' | 'hasta'> = {
+    tipos: parametros.get('tipo') ? `${parametros.get('tipo')}` : undefined,
+    responsable: parametros.get('responsable') ?? undefined,
+    causa: parametros.get('causa') ?? undefined,
+    estado: parametros.get('estado') ?? undefined,
+    prioridad: parametros.get('prioridad') ?? undefined,
+    alcance: parametros.get('alcance') === 'mios' ? 'mios' : 'estudio',
+    completados: parametros.get('completados') === '1',
+    cancelados: parametros.get('cancelados') === '1',
+  };
+  const cantidadFiltros = FILTROS.filter((f) => parametros.get(f)).length;
+
+  const rango = rangoVista(vista, fecha);
+  const agenda = useAgenda({ ...rango, ...filtros });
+
+  // Próximos compromisos del panel: siempre desde hoy, con los mismos filtros.
+  const hoy = agenda.data?.hoy ?? hoyEstudio ?? hoyLocal();
+  const proximos = useAgenda({ ...filtros, desde: hoy, hasta: sumarDias(hoy, 14), completados: false, cancelados: false }, panelAbierto);
+
+  // El "hoy" que vale es el del estudio, que informa la API.
+  useEffect(() => {
+    if (agenda.data?.hoy && agenda.data.hoy !== hoyEstudio) setHoyEstudio(agenda.data.hoy);
+  }, [agenda.data?.hoy, hoyEstudio]);
+
+  // Un enlace con ?evento= abre el panel aunque el usuario lo hubiera cerrado.
+  useEffect(() => {
+    if (eventoId) setPanelAbierto(true);
+  }, [eventoId]);
+
+  useEffect(() => {
+    localStorage.setItem(CLAVE_PANEL, panelAbierto ? 'abierto' : 'cerrado');
+  }, [panelAbierto]);
+
+  const items = useMemo(() => agenda.data?.datos ?? [], [agenda.data]);
+  const claveElegida = eventoId ? `EVENTO:${eventoId}` : (seleccion?.clave ?? null);
+
+  function seleccionar(item: ItemAgenda) {
+    setPanelAbierto(true);
+    if (item.origen === 'EVENTO') {
+      setSeleccion(null);
+      actualizar({ evento: item.id });
+    } else {
+      actualizar({ evento: null });
+      setSeleccion(item);
+    }
+  }
+
+  function cerrarSeleccion() {
+    setSeleccion(null);
+    actualizar({ evento: null });
+  }
+
+  const puedeCrear = puede('agenda.crear');
+  const alCrear = puedeCrear ? (dia: string, hora?: string) => setDialogo({ fecha: dia, hora }) : undefined;
+  const irADia = (dia: string) => actualizar({ vista: 'dia', fecha: dia });
+
+  const diasSemana = useMemo(() => {
+    const desde = inicioSemana(fecha);
+    return Array.from({ length: 7 }, (_, i) => sumarDias(desde, i));
+  }, [fecha]);
+
+  const opcionesResponsables = (catalogos?.profesionales ?? []).map((p) => ({ valor: p.id, texto: p.nombre }));
+
+  const propsVista = {
+    items,
+    hoy,
+    seleccion: claveElegida,
+    alSeleccionar: seleccionar,
+    alCrear,
+  };
 
   return (
-    <>
+    <div className="pagina-agenda">
       <CabeceraPagina
-        titulo="Agenda y plazos"
-        descripcion="Qué vence y cuándo, en todos los expedientes del estudio."
+        titulo="Agenda jurídica"
+        descripcion="Audiencias, mediaciones, reuniones y vencimientos del estudio, con los plazos y las tareas."
         acciones={
-          usuario && (
-            <Boton
-              variante={responsable === usuario.id ? 'primario' : 'secundario'}
-              onClick={() =>
-                escribir({ responsable: responsable === usuario.id ? undefined : usuario.id })
-              }
-              aria-pressed={responsable === usuario.id}
-            >
-              Solo mis plazos
+          puedeCrear ? (
+            <Boton variante="primario" icono={<Plus size={16} />} onClick={() => setDialogo({ fecha: vista === 'mes' ? hoy : fecha })}>
+              Nuevo evento
             </Boton>
-          )
+          ) : undefined
         }
       />
 
-      <TarjetaAlertas alcance={responsable && responsable === usuario?.id ? 'mias' : 'todas'} />
-
-      <Tarjeta>
-        <div className="barra-filtros">
-          <div className="barra-filtros__grupo">
-            <FiltroSelect
-              etiqueta="Rango de fechas"
-              value={rango}
-              onChange={(evento) => escribir({ rango: evento.target.value })}
-              opciones={RANGOS.map((opcion) => ({ valor: opcion.valor, texto: opcion.texto }))}
-              vacio="Próximos 30 días"
-            />
-
-            <FiltroSelect
-              etiqueta="Responsable"
-              value={responsable}
-              onChange={(evento) => escribir({ responsable: evento.target.value })}
-              opciones={(catalogos?.profesionales ?? []).map((p) => ({
-                valor: p.id,
-                texto: p.nombre,
-              }))}
-              vacio="Cualquier responsable"
-            />
-
-            <FiltroSelect
-              etiqueta="Estado"
-              value={vigencia}
-              onChange={(evento) => escribir({ vigencia: evento.target.value })}
-              opciones={[
-                { valor: 'abiertos', texto: 'Abiertos' },
-                { valor: 'cerrados', texto: 'Cerrados' },
-                { valor: 'todos', texto: 'Todos' },
-              ]}
-              vacio="Abiertos"
-            />
-
-            {hayFiltros && (
-              <button
-                type="button"
-                className="boton boton--sutil boton--pequeno"
-                onClick={() => setParametros(new URLSearchParams(), { replace: true })}
-              >
-                <FilterX size={15} aria-hidden />
-                Quitar filtros
-              </button>
-            )}
-          </div>
-
-          <p className="texto-pequeno texto-tenue" aria-live="polite" style={{ margin: 0 }}>
-            {isPending
-              ? 'Buscando…'
-              : `${data?.total ?? 0} ${data?.total === 1 ? 'plazo' : 'plazos'}`}
-          </p>
+      <div className="barra-agenda" role="toolbar" aria-label="Navegación de la agenda">
+        <div className="barra-agenda__navegacion">
+          <Boton
+            variante="sutil"
+            pequeno
+            className="boton--icono"
+            aria-label="Período anterior"
+            onClick={() => actualizar({ fecha: navegar(vista, fecha, -1) })}
+          >
+            <ChevronLeft size={18} aria-hidden />
+          </Boton>
+          <Boton
+            variante="sutil"
+            pequeno
+            className="boton--icono"
+            aria-label="Período siguiente"
+            onClick={() => actualizar({ fecha: navegar(vista, fecha, 1) })}
+          >
+            <ChevronRight size={18} aria-hidden />
+          </Boton>
+          <Boton pequeno onClick={() => actualizar({ fecha: null })} disabled={!fechaUrl}>
+            Hoy
+          </Boton>
+          <h2 className="barra-agenda__periodo" aria-live="polite">
+            {etiquetaPeriodo(vista, fecha)}
+          </h2>
         </div>
-      </Tarjeta>
 
-      {isPending && (
-        <Tarjeta>
-          <EsqueletoLista />
-        </Tarjeta>
-      )}
-
-      {isError && (
-        <Tarjeta>
-          <ErrorCarga error={error} reintentar={() => void refetch()} />
-        </Tarjeta>
-      )}
-
-      {data && data.datos.length === 0 && (
-        <Tarjeta>
-          <Vacio
-            titulo={hayFiltros ? 'Nada con esos filtros' : 'No hay plazos a la vista'}
-            texto={
-              hayFiltros
-                ? 'Probá ampliar el rango de fechas o quitar el filtro de responsable.'
-                : 'Los plazos se cargan desde el expediente, y el sistema calcula su vencimiento.'
-            }
-            icono={<AlarmClock size={20} aria-hidden />}
-          />
-        </Tarjeta>
-      )}
-
-      {grupos.map((grupo) => (
-        <Tarjeta key={grupo.clave} titulo={grupo.titulo} descripcion={grupo.descripcion} sinRelleno>
-          <div className="lista">
-            {grupo.plazos.map((plazo) => (
-              <Link
-                key={plazo.id}
-                to={`/expedientes/${plazo.causa_id}?pestana=plazos`}
-                className="lista__item"
+        <div className="barra-agenda__acciones">
+          <div className="segmentado" role="group" aria-label="Vista">
+            {VISTAS.map((opcion) => (
+              <button
+                key={opcion.valor}
+                type="button"
+                className="segmentado__opcion"
+                aria-pressed={vista === opcion.valor}
+                onClick={() => actualizar({ vista: opcion.valor })}
               >
-                <span className="lista__cuerpo">
-                  <span className="lista__titulo">{plazo.descripcion}</span>
-                  <span className="lista__meta">
-                    {plazo.caratula}
-                    {plazo.numero_expediente && ` · Expte. ${plazo.numero_expediente}`}
-                  </span>
-                  <span className="lista__meta">
-                    Vence el {fechaLarga(plazo.fecha_vencimiento)}
-                    {plazo.responsable && ` · ${plazo.responsable}`}
-                    {!plazo.responsable && ' · sin responsable asignado'}
-                  </span>
-                </span>
-
-                <span className="lista__lateral">
-                  {plazo.suspendido_sin_fin ? (
-                    <Etiqueta tono="alerta">Sin reanudar</Etiqueta>
-                  ) : (
-                    plazo.dias_restantes !== null && (
-                      <Vencimiento dias={plazo.dias_restantes} texto={enDias(plazo.dias_restantes)} />
-                    )
-                  )}
-                  <EstadoPlazo estado={plazo.estado} />
-                </span>
-              </Link>
+                {opcion.texto}
+              </button>
             ))}
           </div>
-        </Tarjeta>
-      ))}
+          <Boton
+            pequeno
+            icono={<SlidersHorizontal size={15} />}
+            aria-expanded={filtrosVisibles}
+            aria-controls="filtros-agenda"
+            onClick={() => setFiltrosVisibles((v) => !v)}
+          >
+            Filtros{cantidadFiltros ? ` · ${cantidadFiltros}` : ''}
+          </Boton>
+          <Boton
+            variante="sutil"
+            pequeno
+            className="boton--icono barra-agenda__panel"
+            aria-label={panelAbierto ? 'Ocultar panel lateral' : 'Mostrar panel lateral'}
+            aria-pressed={panelAbierto}
+            onClick={() => setPanelAbierto((v) => !v)}
+          >
+            {panelAbierto ? <PanelRightClose size={18} aria-hidden /> : <PanelRightOpen size={18} aria-hidden />}
+          </Boton>
+        </div>
+      </div>
 
-      {data && data.totalPaginas > 1 && (
-        <Tarjeta>
-          <Paginacion
-            pagina={data.pagina}
-            totalPaginas={data.totalPaginas}
-            total={data.total}
-            tamano={data.tamano}
-            cantidadEnPagina={data.datos.length}
-            alCambiarPagina={(pagina) =>
-              escribir({ pagina: pagina <= 1 ? undefined : String(pagina) }, false)
-            }
-            sustantivo="plazos"
+      {filtrosVisibles && (
+        <div className="filtros-agenda" id="filtros-agenda">
+          <div className="segmentado segmentado--pequeno" role="group" aria-label="Alcance">
+            <button
+              type="button"
+              className="segmentado__opcion"
+              aria-pressed={filtros.alcance !== 'mios'}
+              onClick={() => actualizar({ alcance: null })}
+            >
+              Todo el estudio
+            </button>
+            <button
+              type="button"
+              className="segmentado__opcion"
+              aria-pressed={filtros.alcance === 'mios'}
+              onClick={() => actualizar({ alcance: 'mios' })}
+            >
+              Mis eventos
+            </button>
+          </div>
+          <FiltroSelect
+            etiqueta="Tipo"
+            vacio="Todos los tipos"
+            opciones={OPCIONES_TIPO}
+            value={parametros.get('tipo') ?? ''}
+            onChange={(e) => actualizar({ tipo: e.target.value })}
           />
-        </Tarjeta>
+          <FiltroSelect
+            etiqueta="Responsable"
+            vacio="Cualquier responsable"
+            opciones={opcionesResponsables}
+            value={parametros.get('responsable') ?? ''}
+            onChange={(e) => actualizar({ responsable: e.target.value })}
+          />
+          <FiltroSelect
+            etiqueta="Estado"
+            vacio="Abiertos"
+            opciones={OPCIONES_ESTADO}
+            value={parametros.get('estado') ?? ''}
+            onChange={(e) => actualizar({ estado: e.target.value })}
+          />
+          <FiltroSelect
+            etiqueta="Prioridad"
+            vacio="Cualquier prioridad"
+            opciones={OPCIONES_PRIORIDAD}
+            value={parametros.get('prioridad') ?? ''}
+            onChange={(e) => actualizar({ prioridad: e.target.value })}
+          />
+          {!parametros.get('estado') && (
+            <>
+              <label className="filtros-agenda__casilla">
+                <input
+                  type="checkbox"
+                  checked={filtros.completados}
+                  onChange={(e) => actualizar({ completados: e.target.checked ? '1' : null })}
+                />
+                Completados
+              </label>
+              <label className="filtros-agenda__casilla">
+                <input
+                  type="checkbox"
+                  checked={filtros.cancelados}
+                  onChange={(e) => actualizar({ cancelados: e.target.checked ? '1' : null })}
+                />
+                Cancelados
+              </label>
+            </>
+          )}
+          {cantidadFiltros > 0 && (
+            <Boton
+              variante="sutil"
+              pequeno
+              icono={<FilterX size={15} />}
+              onClick={() => actualizar(Object.fromEntries(FILTROS.map((f) => [f, null])))}
+            >
+              Limpiar filtros
+            </Boton>
+          )}
+        </div>
       )}
 
-      {data && data.datos.length > 0 && (
-        <p className="texto-pequeno texto-tenue" style={{ textAlign: 'center' }}>
-          Los vencimientos los calcula el sistema sobre el calendario de días inhábiles cargado.
-          Son una ayuda para no perder un plazo, no reemplazan el control del profesional.
-          Última consulta: {formatearFecha(new Date().toISOString().slice(0, 10))}.
-        </p>
+      <div className={`agenda${panelAbierto ? '' : ' agenda--sin-panel'}`}>
+        <section className={`calendario-agenda${agenda.isFetching ? ' calendario-agenda--cargando' : ''}`} aria-busy={agenda.isFetching}>
+          {agenda.isError ? (
+            <ErrorCarga error={agenda.error} reintentar={() => void agenda.refetch()} />
+          ) : vista === 'mes' ? (
+            <VistaMes {...propsVista} fecha={fecha} alVerDia={irADia} />
+          ) : vista === 'semana' ? (
+            <VistaHoraria {...propsVista} dias={diasSemana} ahora={agenda.data?.ahora ?? ''} alVerDia={irADia} />
+          ) : vista === 'dia' ? (
+            <VistaHoraria {...propsVista} dias={[fecha]} ahora={agenda.data?.ahora ?? ''} />
+          ) : (
+            <VistaListado {...propsVista} desde={rango.desde} hasta={rango.hasta} />
+          )}
+        </section>
+
+        {panelAbierto && (
+          <PanelAgenda
+            eventoId={eventoId}
+            seleccion={seleccion}
+            proximos={proximos.data?.datos ?? []}
+            cargandoProximos={proximos.isPending}
+            hoy={hoy}
+            alCerrarSeleccion={cerrarSeleccion}
+            alSeleccionar={seleccionar}
+            alEditar={(evento) => setDialogo({ evento })}
+          />
+        )}
+      </div>
+
+      {dialogo && (
+        <DialogoEvento
+          abierto
+          key={dialogo.evento?.id ?? `${dialogo.fecha}-${dialogo.hora}`}
+          evento={dialogo.evento}
+          fechaInicial={dialogo.fecha}
+          horaInicial={dialogo.hora}
+          alCerrar={() => setDialogo(null)}
+          alGuardar={(evento) => {
+            setSeleccion(null);
+            actualizar({ evento: evento.id });
+          }}
+        />
       )}
-    </>
+    </div>
   );
 }
