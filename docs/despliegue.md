@@ -247,6 +247,14 @@ sin valores reales.
 | `SUPABASE_URL` · `SUPABASE_SERVICE_KEY` · `SUPABASE_BUCKET` | backend | Almacenamiento de documentos. Sin ellas, disco local (`ALMACENAMIENTO_DIR`). |
 | `MEGAS_MAXIMO_ARCHIVO` | backend y pdf | Tamaño máximo de un archivo. Por defecto 10. |
 | `CLAUDE_API_KEY` | backend | Reservada: entra con el módulo de IA. Opcional. |
+| `ZONA_HORARIA` | backend | Zona del estudio (IANA). Decide qué día es "hoy" y la hora de los eventos. Por defecto `America/Argentina/Buenos_Aires`. |
+| `CORREO_MODO` | backend | `deshabilitado` (por defecto), `simulado` o `real`. Con `real` y un dato faltante, queda deshabilitado. |
+| `CORREO_PROVEEDOR` · `CORREO_REMITENTE` · `RESEND_API_KEY` | backend | Proveedor de correo (hoy Resend), remitente verificado y clave. Solo con `CORREO_MODO=real`. |
+| `APP_URL` | backend | URL pública de la SPA, para los enlaces de los correos. |
+| `CRON_SECRET` | backend | Secreto del programador externo de avisos (`POST /api/interno/programador`). Mínimo 32 caracteres; sin él el endpoint responde 503. |
+
+La activación del correo y del programador externo está en
+[fase-5-agenda-notificaciones.md](fase-5-agenda-notificaciones.md), sección 9.
 
 ---
 
