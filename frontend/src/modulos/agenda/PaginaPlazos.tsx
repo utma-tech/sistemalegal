@@ -16,7 +16,8 @@ import { ErrorCarga, EsqueletoLista, Vacio } from '../../componentes/ui/Estados'
 import { TarjetaAlertas } from '../alertas/TarjetaAlertas';
 
 /**
- * Agenda de plazos del estudio.
+ * Plazos del estudio (antes "Agenda y plazos", en /agenda; desde la fase 5
+ * vive en /plazos y la agenda jurídica ocupa /agenda).
  *
  * Responde la pregunta con la que empieza el día: **qué vence y cuándo**.
  * Por eso los plazos no se muestran como una tabla plana ordenada por fecha,
@@ -83,7 +84,7 @@ function agrupar(plazos: PlazoListado[]): Grupo[] {
   return grupos.filter((grupo) => grupo.plazos.length > 0);
 }
 
-export function PaginaAgenda() {
+export function PaginaPlazos() {
   const [parametros, setParametros] = useSearchParams();
   const { data: catalogos } = useCatalogos();
   const { usuario } = useSesion();
@@ -127,8 +128,8 @@ export function PaginaAgenda() {
   return (
     <>
       <CabeceraPagina
-        titulo="Agenda y plazos"
-        descripcion="Qué vence y cuándo, en todos los expedientes del estudio."
+        titulo="Plazos"
+        descripcion="Qué vence y cuándo, en todos los expedientes del estudio. Para audiencias y reuniones, usá la agenda."
         acciones={
           usuario && (
             <Boton

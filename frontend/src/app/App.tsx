@@ -10,6 +10,8 @@ import { PaginaExpedientes } from '../modulos/causas/PaginaExpedientes';
 import { PaginaExpediente } from '../modulos/causas/PaginaExpediente';
 import { PaginaClientes } from '../modulos/personas/PaginaClientes';
 import { PaginaAgenda } from '../modulos/agenda/PaginaAgenda';
+import { PaginaPlazos } from '../modulos/agenda/PaginaPlazos';
+import { PaginaNotificaciones } from '../modulos/notificaciones/PaginaNotificaciones';
 import { PaginaCliente } from '../modulos/personas/PaginaCliente';
 import { PaginaDiagnostico } from '../modulos/diagnostico/PaginaDiagnostico';
 import { PaginaTareas } from '../modulos/tareas/PaginaTareas';
@@ -58,12 +60,14 @@ export function App() {
                   <Route path="clientes" element={<PaginaClientes />} />
                   <Route path="clientes/:id" element={<PaginaCliente />} />
                   <Route path="agenda" element={<PaginaAgenda />} />
+                  <Route path="plazos" element={<PaginaPlazos />} />
                   <Route path="tareas" element={<PaginaTareas />} />
                   <Route path="documentos" element={<PaginaDocumentos />} />
                   <Route path="costas" element={<PaginaCostas />} />
                   <Route path="calendario" element={<PaginaCalendario />} />
                   <Route path="usuarios" element={<PaginaUsuarios />} />
                   <Route path="auditoria" element={<PaginaAuditoria />} />
+                  <Route path="notificaciones" element={<PaginaNotificaciones />} />
                   <Route path="diagnostico" element={<PaginaDiagnostico />} />
                 </Route>
               </Route>

@@ -201,6 +201,8 @@ export const api = {
   enviar: <T>(ruta: string, cuerpo: unknown) => pedir<T>(ruta, { metodo: 'POST', cuerpo }),
   /** PUT: reemplaza el recurso completo, que es como actualiza la API. */
   reemplazar: <T>(ruta: string, cuerpo: unknown) => pedir<T>(ruta, { metodo: 'PUT', cuerpo }),
+  /** PATCH: cambio parcial (p. ej. el estado de un evento). */
+  parchear: <T>(ruta: string, cuerpo: unknown) => pedir<T>(ruta, { metodo: 'PATCH', cuerpo }),
   eliminar: <T>(ruta: string) => pedir<T>(ruta, { metodo: 'DELETE' }),
   /** Sube un archivo como cuerpo binario; los metadatos van en la query string de la ruta. */
   subir: <T>(ruta: string, archivo: Blob) => pedir<T>(ruta, { metodo: 'POST', archivo }),

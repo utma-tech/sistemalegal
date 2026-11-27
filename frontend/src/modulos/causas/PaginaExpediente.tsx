@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DialogoEvento } from '../agenda/DialogoEvento';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlarmClock,
@@ -13,8 +14,7 @@ import {
   Scale,
   Trash2,
   UserMinus,
-  Users,
-} from 'lucide-react';
+  Users, CalendarPlus } from 'lucide-react';
 import {
   useCausa,
   useDesasignarProfesional,
@@ -88,6 +88,7 @@ export function PaginaExpediente() {
   // Qué diálogo está abierto. Los de confirmación guardan el registro sobre el
   // que preguntan, para poder nombrarlo en el mensaje.
   const [editando, setEditando] = useState(false);
+  const [agendando, setAgendando] = useState(false);
   const [agregandoParte, setAgregandoParte] = useState(false);
   const [asignando, setAsignando] = useState(false);
   const [registrandoMovimiento, setRegistrandoMovimiento] = useState(false);
@@ -200,6 +201,11 @@ export function PaginaExpediente() {
         }
         acciones={
           <>
+            {puede('agenda.crear') && (
+              <Boton icono={<CalendarPlus size={15} aria-hidden />} onClick={() => setAgendando(true)}>
+                Agendar
+              </Boton>
+            )}
             {puede('causa.editar') && (
               <Boton icono={<Pencil size={15} aria-hidden />} onClick={() => setEditando(true)}>
                 Editar
@@ -691,6 +697,14 @@ export function PaginaExpediente() {
         alConfirmar={() => void confirmarDesasignar()}
         alCerrar={() => setProfesionalAQuitar(undefined)}
       />
+      {agendando && (
+        <DialogoEvento
+          abierto
+          alCerrar={() => setAgendando(false)}
+          causaFija={{ id: causa.id, caratula: causa.caratula }}
+          alGuardar={(evento) => navegar(`/agenda?evento=${evento.id}&fecha=${evento.fecha_inicio}`)}
+        />
+      )}
     </>
   );
 }

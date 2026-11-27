@@ -1,7 +1,9 @@
 import {
+  AlarmClock,
   Banknote,
+  BellRing,
   BarChart3,
-  CalendarClock,
+  CalendarDays,
   CalendarOff,
   FileText,
   FolderOpen,
@@ -38,7 +40,8 @@ export const NAVEGACION: ItemNavegacion[] = [
   { ruta: '/', texto: 'Inicio', icono: LayoutDashboard },
   { ruta: '/expedientes', texto: 'Expedientes', icono: FolderOpen, permiso: 'causa.ver', prefijo: true },
   { ruta: '/clientes', texto: 'Clientes y partes', icono: Users, permiso: 'persona.ver', prefijo: true },
-  { ruta: '/agenda', texto: 'Agenda y plazos', icono: CalendarClock, permiso: 'plazo.ver', prefijo: true },
+  { ruta: '/agenda', texto: 'Agenda', icono: CalendarDays, permiso: 'agenda.ver' },
+  { ruta: '/plazos', texto: 'Plazos', icono: AlarmClock, permiso: 'plazo.ver' },
   { ruta: '/tareas', texto: 'Tareas', icono: ListChecks, permiso: 'tarea.ver' },
   { ruta: '/documentos', texto: 'Documentos', icono: FileText, permiso: 'documento.ver' },
   { ruta: '/costas', texto: 'Honorarios y costas', icono: Banknote, permiso: 'costa.ver' },
@@ -52,6 +55,7 @@ export const NAVEGACION_ADMINISTRACION: ItemNavegacion[] = [
   { ruta: '/calendario', texto: 'Calendario judicial', icono: CalendarOff, permiso: 'calendario.ver' },
   { ruta: '/usuarios', texto: 'Usuarios y permisos', icono: UserCog, permiso: 'usuario.ver' },
   { ruta: '/auditoria', texto: 'Auditoría', icono: ScrollText, permiso: 'auditoria.ver' },
+  { ruta: '/notificaciones', texto: 'Notificaciones', icono: BellRing, permiso: 'configuracion.notificaciones' },
 ];
 
 /**

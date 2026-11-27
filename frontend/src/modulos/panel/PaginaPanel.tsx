@@ -202,7 +202,7 @@ export function PaginaPanel() {
           descripcion={indicadores.plazos_vencidos > 0 ? 'Requieren atención' : 'Todo al día'}
           icono={CircleAlert}
           tono={indicadores.plazos_vencidos > 0 ? 'peligro' : 'neutral'}
-          ruta={puede('plazo.ver') ? '/agenda' : undefined}
+          ruta={puede('plazo.ver') ? '/plazos' : undefined}
         />
         <Indicador
           valor={indicadores.plazos_por_vencer}
@@ -210,7 +210,7 @@ export function PaginaPanel() {
           descripcion={`En los próximos ${diasHorizonte} días`}
           icono={AlarmClock}
           tono={indicadores.plazos_por_vencer > 0 ? 'alerta' : 'neutral'}
-          ruta={puede('plazo.ver') ? `/agenda?rango=${diasHorizonte <= 7 ? '7' : '30'}` : undefined}
+          ruta={puede('plazo.ver') ? `/plazos?rango=${diasHorizonte <= 7 ? '7' : '30'}` : undefined}
         />
         <Indicador
           valor={indicadores.causas_activas}
@@ -250,8 +250,8 @@ export function PaginaPanel() {
             descripcion={`Incumplidos y los que vencen en los próximos ${diasHorizonte} días.`}
             accion={
               puede('plazo.ver') ? (
-                <Link to="/agenda" className="texto-pequeno">
-                  Ver agenda
+                <Link to="/plazos" className="texto-pequeno">
+                  Ver plazos
                 </Link>
               ) : undefined
             }
@@ -376,7 +376,18 @@ export function PaginaPanel() {
           </Tarjeta>
 
           <div className="pila pila--panel">
-            <Tarjeta titulo="Agenda" descripcion={`Audiencias y eventos de los próximos ${diasHorizonte} días.`} sinRelleno>
+            <Tarjeta
+              titulo="Agenda"
+              descripcion={`Audiencias y eventos de los próximos ${diasHorizonte} días.`}
+              accion={
+                puede('agenda.ver') ? (
+                  <Link to="/agenda" className="texto-pequeno">
+                    Ver agenda
+                  </Link>
+                ) : undefined
+              }
+              sinRelleno
+            >
               {eventos.length === 0 ? (
                 <p className="subgrupo__vacio subgrupo__vacio--suelto">
                   <CalendarDays size={15} aria-hidden /> Sin audiencias ni eventos próximos.
@@ -384,7 +395,7 @@ export function PaginaPanel() {
               ) : (
                 <div className="lista">
                   {eventos.map((evento) => (
-                    <div key={evento.id} className="lista__item">
+                    <Link key={evento.id} to={`/agenda?evento=${evento.id}`} className="lista__item">
                       <span className="lista__cuerpo">
                         <span className="lista__titulo" title={evento.titulo}>
                           {evento.titulo}
@@ -397,10 +408,10 @@ export function PaginaPanel() {
                       </span>
                       <span className="lista__lateral">
                         <Etiqueta tono={evento.tipo === 'AUDIENCIA' ? 'info' : 'neutral'}>
-                          {legible(evento.tipo)}
+                          {evento.tipo === 'MEDIACION' ? 'Mediación' : evento.tipo === 'REUNION' ? 'Reunión' : legible(evento.tipo)}
                         </Etiqueta>
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

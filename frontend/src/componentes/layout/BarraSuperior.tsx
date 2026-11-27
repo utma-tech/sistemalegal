@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { KeyRound, LogOut, Menu, Search, UserRound } from 'lucide-react';
+import { BellRing, KeyRound, LogOut, Menu, Search, UserRound } from 'lucide-react';
 import { useSesion } from '../../modulos/auth/ContextoSesion';
 import { iniciales } from '../../lib/formato';
 import { Boton } from '../ui/Boton';
 import { BandejaNotificaciones } from '../../modulos/alertas/BandejaNotificaciones';
 import { DialogoMiPassword } from '../../modulos/usuarios/DialogoMiPassword';
+import { DialogoPreferencias } from '../../modulos/notificaciones/DialogoPreferencias';
 import { rutaDeSeccion } from './navegacion';
 
 /**
@@ -22,6 +23,7 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
   const { usuario, cerrarSesion } = useSesion();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [cambiandoPassword, setCambiandoPassword] = useState(false);
+  const [editandoPreferencias, setEditandoPreferencias] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
   const navegar = useNavigate();
   const ubicacion = useLocation();
@@ -144,6 +146,19 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
                 Cambiar mi contraseña
               </button>
 
+              <button
+                type="button"
+                className="menu__item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  setEditandoPreferencias(true);
+                }}
+              >
+                <BellRing size={16} aria-hidden />
+                Notificaciones
+              </button>
+
               <button type="button" className="menu__item menu__item--peligro" role="menuitem" onClick={salir}>
                 <LogOut size={16} aria-hidden />
                 Cerrar sesión
@@ -154,6 +169,7 @@ export function BarraSuperior({ titulo, alAbrirMenu, alAbrirBusqueda }: Props) {
       </div>
 
       {cambiandoPassword && <DialogoMiPassword alCerrar={() => setCambiandoPassword(false)} />}
+      {editandoPreferencias && <DialogoPreferencias alCerrar={() => setEditandoPreferencias(false)} />}
     </header>
   );
 }
