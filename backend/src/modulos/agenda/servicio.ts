@@ -97,7 +97,7 @@ async function validarVinculos(d: DatosEvento, sesion: SesionUsuario): Promise<v
       else if (!usuario.activo) (errores[campo] ??= []).push(`${usuario.nombre} está dado de baja.`);
       else if (d.causa_id && !rolConAlcanceGeneral(usuario.rol) && !usuario.asignado) {
         (errores[campo] ??= []).push(
-          `${usuario.nombre} no está asignado a ese expediente. Asignalo a la causa antes de sumarlo al evento.`,
+          `${usuario.nombre} no tiene asignado ese expediente. Primero hay que sumarlo a la causa.`,
         );
       }
     }

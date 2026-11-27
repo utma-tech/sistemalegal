@@ -311,7 +311,7 @@ describe.skipIf(!hayBase)('visibilidad y alcance', () => {
       evento({ causa_id: causa, participantes: [empleado2.usuario.id] }),
     );
     expect(convocatoria.status).toBe(400);
-    expect(convocatoria.body.detalles?.participantes?.[0]).toMatch(/no está asignado/);
+    expect(convocatoria.body.detalles?.participantes?.[0]).toMatch(/no tiene asignado/);
 
     // Cambiar la vinculación de un evento propio hacia una causa ajena tampoco.
     const propio = await crearEvento(empleado);
