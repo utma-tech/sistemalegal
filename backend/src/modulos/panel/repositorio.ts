@@ -1,5 +1,5 @@
 import { obtenerPool } from '../../db';
-import { sqlCausaEnAlcance, sqlCausaOpcionalEnAlcance } from '../../comun/alcance';
+import { sqlCausaEnAlcance, sqlCausaOpcionalEnAlcance, sqlEventoVisible } from '../../comun/alcance';
 
 /**
  * Consultas del panel de inicio.
@@ -58,7 +58,8 @@ export async function indicadores(
 
        (SELECT count(*) FROM evento_calendario e
          WHERE e.tipo = 'AUDIENCIA'
-           AND ${sqlCausaOpcionalEnAlcance('e.causa_id', '$3')}
+           AND e.estado IN ('PENDIENTE', 'CONFIRMADO')
+           AND ${sqlEventoVisible('e', '$1', '$3')}
            AND e.fecha_inicio >= now()
            AND e.fecha_inicio < now() + make_interval(days => $2))::int AS audiencias_proximas`,
     [usuarioId, diasHorizonte, alcance],
@@ -183,6 +184,7 @@ export interface EventoPanel {
 }
 
 export async function eventosProximos(
+  usuarioId: string,
   diasHorizonte: number,
   limite: number,
   alcance: string | null,
@@ -200,10 +202,12 @@ export async function eventosProximos(
        LEFT JOIN causa c ON c.id = e.causa_id AND c.eliminado_en IS NULL
       WHERE e.fecha_inicio >= date_trunc('day', now())
         AND e.fecha_inicio < now() + make_interval(days => $1)
-        AND ${sqlCausaOpcionalEnAlcance('e.causa_id', '$3')}
+        AND e.estado IN ('PENDIENTE', 'CONFIRMADO')
+        AND (e.causa_id IS NULL OR c.id IS NOT NULL)
+        AND ${sqlEventoVisible('e', '$4', '$3')}
       ORDER BY e.fecha_inicio
       LIMIT $2`,
-    [diasHorizonte, limite, alcance],
+    [diasHorizonte, limite, alcance, usuarioId],
   );
   return rows;
 }

@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { z } from 'zod';
 import { ErrorSolicitud } from './errores';
+import { config } from '../config';
 
 /**
  * Lectura de parámetros de ruta.
@@ -43,11 +44,34 @@ export const fechaOpcional = (mensaje: string) =>
     .or(z.literal(''))
     .transform((v) => v || undefined);
 
-/** Hoy en formato `YYYY-MM-DD`, en la zona horaria del servidor. */
-export function hoy(): string {
-  const ahora = new Date();
-  const anio = ahora.getFullYear();
-  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-  const dia = String(ahora.getDate()).padStart(2, '0');
-  return `${anio}-${mes}-${dia}`;
+/**
+ * Hoy en formato `YYYY-MM-DD`, en la zona horaria del estudio (ZONA_HORARIA).
+ *
+ * Antes usaba la zona del servidor. En Render es UTC: entre las 21 h y la
+ * medianoche de Argentina "hoy" ya era mañana, y una alerta podía adelantarse
+ * un día. La fecha procesal es la del estudio, no la de la máquina.
+ */
+export function hoy(ahora: Date = new Date()): string {
+  return fechaEnZona(ahora, config.zonaHoraria);
+}
+
+/** Fecha civil (`YYYY-MM-DD`) de un instante en una zona IANA. */
+export function fechaEnZona(instante: Date, zona: string): string {
+  // en-CA formatea como YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: zona,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instante);
+}
+
+/** Hora de pared (`HH:mm`) de un instante en una zona IANA. */
+export function horaEnZona(instante: Date, zona: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: zona,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(instante);
 }

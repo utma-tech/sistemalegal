@@ -31,7 +31,7 @@ export async function armarPanel(sesion: SesionUsuario): Promise<Panel> {
   const puedeVerPlazos = sesion.permisos.includes('plazo.ver');
   const puedeVerTareas = sesion.permisos.includes('tarea.ver');
   const puedeVerCausas = sesion.permisos.includes('causa.ver');
-  const puedeVerAgenda = sesion.permisos.includes('calendario.ver');
+  const puedeVerAgenda = sesion.permisos.includes('agenda.ver');
   const puedeVerFinanzas = sesion.permisos.includes('costa.ver');
   // Alcance por expediente: con un usuario acotado, cada número y cada lista
   // del panel se calcula solo sobre sus causas (comun/alcance.ts).
@@ -44,7 +44,7 @@ export async function armarPanel(sesion: SesionUsuario): Promise<Panel> {
       repositorio.indicadores(sesion.id, DIAS_HORIZONTE, alcance),
       puedeVerPlazos ? repositorio.plazosProximos(DIAS_HORIZONTE, TOPE_LISTA, alcance) : [],
       puedeVerTareas ? repositorio.tareasAbiertas(sesion.id, TOPE_LISTA, alcance) : [],
-      puedeVerAgenda ? repositorio.eventosProximos(DIAS_HORIZONTE, TOPE_LISTA, alcance) : [],
+      puedeVerAgenda ? repositorio.eventosProximos(sesion.id, DIAS_HORIZONTE, TOPE_LISTA, alcance) : [],
       puedeVerCausas ? repositorio.actividadReciente(TOPE_LISTA, alcance) : [],
       puedeVerCausas ? repositorio.causasRecientes(TOPE_LISTA, alcance) : [],
       puedeVerFinanzas ? repositorio.resumenFinanciero(alcance) : undefined,

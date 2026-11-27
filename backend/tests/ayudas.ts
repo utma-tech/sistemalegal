@@ -14,6 +14,7 @@ export const USUARIOS_DEMO = {
   admin: { email: 'admin@estudiodemo.test', password: 'Demo1234!' },
   jefe: { email: 'jefe@estudiodemo.test', password: 'Demo1234!' },
   empleado: { email: 'empleado1@estudiodemo.test', password: 'Demo1234!' },
+  empleado2: { email: 'empleado2@estudiodemo.test', password: 'Demo1234!' },
 } as const;
 
 export interface SesionDePrueba {
@@ -89,6 +90,9 @@ export async function limpiarDatosDePrueba(): Promise<void> {
   const patron = `${PREFIJO_PRUEBA}%`;
   const pool = obtenerPool();
 
+  // Eventos de agenda antes que las causas: sus avisos y participantes se van
+  // por ON DELETE CASCADE.
+  await pool.query('DELETE FROM evento_calendario WHERE titulo LIKE $1', [patron]).catch(() => undefined);
   await pool.query('DELETE FROM causa WHERE caratula LIKE $1', [patron]).catch(() => undefined);
   await pool
     .query('DELETE FROM persona WHERE apellido LIKE $1 OR razon_social LIKE $1', [patron])

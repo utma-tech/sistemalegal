@@ -1,5 +1,7 @@
 import { obtenerPool } from '../../db';
 import { hoy } from '../../comun/ruta';
+import { sqlCausaEnAlcance, sqlEventoVisible } from '../../comun/alcance';
+import { encolar } from '../notificaciones/cola';
 import {
   habilesRestantes,
   mensajeAlerta,
@@ -171,13 +173,17 @@ export async function evaluarYRegistrar(): Promise<number> {
     const nuevas: { id: string; nivel: Nivel }[] = [];
 
     for (const regla of disparadas) {
+      // La clave incluye la fecha de vencimiento (migración 014): si el plazo se
+      // recomputa y cambia de fecha, la regla vuelve a avisar por la fecha nueva;
+      // por la misma fecha, nunca dos veces.
       const { rows } = await pool.query<{ id: string }>(
         `INSERT INTO alerta (plazo_id, regla_alerta_id, nivel, fecha_programada, mensaje,
-                             estado, disparada_en)
-         VALUES ($1, $2, $3, $4::date, $5, 'DISPARADA', now())
-         ON CONFLICT (plazo_id, regla_alerta_id) WHERE regla_alerta_id IS NOT NULL DO NOTHING
+                             estado, disparada_en, fecha_vencimiento_ref)
+         VALUES ($1, $2, $3, $4::date, $5, 'DISPARADA', now(), $6::date)
+         ON CONFLICT (plazo_id, regla_alerta_id, fecha_vencimiento_ref)
+            WHERE regla_alerta_id IS NOT NULL DO NOTHING
          RETURNING id`,
-        [plazo.id, regla.id, regla.nivel, fechaHoy, mensaje],
+        [plazo.id, regla.id, regla.nivel, fechaHoy, mensaje, plazo.fecha_vencimiento],
       );
       if (rows[0]) nuevas.push({ id: rows[0].id, nivel: regla.nivel });
     }
@@ -191,6 +197,27 @@ export async function evaluarYRegistrar(): Promise<number> {
       [plazo.responsable_id, masGrave.id, TITULOS[masGrave.nivel], mensaje],
     );
     creadas += 1;
+
+    // El correo va por la cola: se entrega cuando corre el programador, con las
+    // preferencias y el acceso revalidados en ese momento. Solo nace de alertas
+    // NUEVAS, así que habilitar el correo no reenvía avisos viejos.
+    await encolar(pool, [
+      {
+        usuarioId: plazo.responsable_id,
+        canal: 'EMAIL',
+        tipo: 'PLAZO_ALERTA',
+        plazoId: plazo.id,
+        alertaId: masGrave.id,
+        datos: {
+          nivel: masGrave.nivel,
+          habiles,
+          fecha_vencimiento: plazo.fecha_vencimiento,
+          titulo: TITULOS[masGrave.nivel],
+          mensaje,
+        },
+        clave: `PLAZO_ALERTA:${masGrave.id}:${plazo.responsable_id}:EMAIL`,
+      },
+    ]);
   }
 
   return creadas;
@@ -234,36 +261,75 @@ export interface Notificacion {
   mensaje: string;
   nivel: Nivel | null;
   causa_id: string | null;
+  evento_id: string | null;
   leida_en: string | null;
   creado_en: string;
 }
 
-export async function bandeja(usuarioId: string): Promise<{ datos: Notificacion[]; no_leidas: number }> {
+interface FilaBandeja extends Notificacion {
+  accesible: boolean;
+}
+
+/**
+ * Bandeja de la campana: SOLO avisos IN_APP. Un correo enviado queda
+ * registrado en `notificacion` con canal EMAIL, pero no es un aviso sin leer
+ * ni suma al contador.
+ *
+ * El texto guardado de un aviso viejo puede nombrar una carátula. Si quien lo
+ * recibió ya no tiene acceso a ese expediente (o al evento), el aviso se
+ * muestra sin el detalle: el historial no puede abrir una puerta cerrada.
+ */
+export async function bandeja(
+  usuarioId: string,
+  alcance: string | null = usuarioId,
+): Promise<{ datos: Notificacion[]; no_leidas: number }> {
   const pool = obtenerPool();
   const [datos, conteo] = await Promise.all([
-    pool.query<Notificacion>(
-      `SELECT n.id, n.titulo, n.mensaje, a.nivel, p.causa_id, n.leida_en, n.creado_en
+    pool.query<FilaBandeja>(
+      `SELECT n.id, n.titulo, n.mensaje, a.nivel,
+              p.causa_id, n.evento_id, n.leida_en, n.creado_en,
+              CASE
+                WHEN n.evento_id IS NOT NULL THEN EXISTS (
+                  SELECT 1 FROM evento_calendario e
+                   WHERE e.id = n.evento_id AND ${sqlEventoVisible('e', '$1', '$2')})
+                WHEN p.id IS NOT NULL THEN
+                  (p.responsable_id = $1::uuid OR ${sqlCausaEnAlcance('p.causa_id', '$2')})
+                ELSE TRUE
+              END AS accesible
          FROM notificacion n
          LEFT JOIN alerta a ON a.id = n.alerta_id
          LEFT JOIN plazo  p ON p.id = a.plazo_id
-        WHERE n.usuario_id = $1
+        WHERE n.usuario_id = $1 AND n.canal = 'IN_APP'
         ORDER BY (n.leida_en IS NULL) DESC, n.creado_en DESC
         LIMIT 30`,
-      [usuarioId],
+      [usuarioId, alcance],
     ),
     pool.query<{ total: number }>(
-      `SELECT count(*)::int AS total FROM notificacion WHERE usuario_id = $1 AND leida_en IS NULL`,
+      `SELECT count(*)::int AS total FROM notificacion
+        WHERE usuario_id = $1 AND leida_en IS NULL AND canal = 'IN_APP'`,
       [usuarioId],
     ),
   ]);
-  return { datos: datos.rows, no_leidas: conteo.rows[0]?.total ?? 0 };
+  return {
+    datos: datos.rows.map(({ accesible, ...fila }) =>
+      accesible
+        ? fila
+        : {
+            ...fila,
+            mensaje: 'Aviso sobre un expediente o evento al que ya no tenés acceso.',
+            causa_id: null,
+            evento_id: null,
+          },
+    ),
+    no_leidas: conteo.rows[0]?.total ?? 0,
+  };
 }
 
 /** Marca como leída una notificación propia. Las de otro usuario no se tocan. */
 export async function marcarLeida(usuarioId: string, id: string): Promise<boolean> {
   const { rowCount } = await obtenerPool().query(
     `UPDATE notificacion SET leida_en = now()
-      WHERE id = $1 AND usuario_id = $2 AND leida_en IS NULL`,
+      WHERE id = $1 AND usuario_id = $2 AND leida_en IS NULL AND canal = 'IN_APP'`,
     [id, usuarioId],
   );
   return (rowCount ?? 0) > 0;
@@ -271,7 +337,8 @@ export async function marcarLeida(usuarioId: string, id: string): Promise<boolea
 
 export async function marcarTodasLeidas(usuarioId: string): Promise<number> {
   const { rowCount } = await obtenerPool().query(
-    `UPDATE notificacion SET leida_en = now() WHERE usuario_id = $1 AND leida_en IS NULL`,
+    `UPDATE notificacion SET leida_en = now()
+      WHERE usuario_id = $1 AND leida_en IS NULL AND canal = 'IN_APP'`,
     [usuarioId],
   );
   return rowCount ?? 0;
