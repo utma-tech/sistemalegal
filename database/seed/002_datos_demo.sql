@@ -345,6 +345,87 @@ JOIN usuario u ON u.email = 'jefe@estudiodemo.test'
 ON CONFLICT DO NOTHING;
 
 -- -----------------------------------------------------------------------------
+-- Agenda jurídica (fase 5)
+--
+-- Fechas RELATIVAS a la fecha de carga (CURRENT_DATE), a diferencia del resto
+-- del seed: una agenda de demostración con todo en el pasado no muestra nada.
+-- Horas de pared de Argentina. Incluye eventos superpuestos, de varios días,
+-- uno completado, uno cancelado y uno personal, para ver todas las vistas.
+-- -----------------------------------------------------------------------------
+INSERT INTO evento_calendario (causa_id, titulo, descripcion, tipo, estado, prioridad, visibilidad,
+                               fecha_inicio, fecha_fin, todo_el_dia, lugar, enlace_virtual,
+                               responsable_id, creado_por, actualizado_por,
+                               completado_en, cancelado_en, motivo_cancelacion)
+SELECT c.id, v.titulo, v.descripcion, v.tipo, v.estado, v.prioridad, v.visibilidad,
+       ((d.dia) + v.desde::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+       ((d.dia + v.dias_fin) + v.hasta::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+       v.todo_el_dia, v.lugar, v.enlace, ur.id, uc.id, uc.id,
+       CASE WHEN v.estado = 'COMPLETADO' THEN now() END,
+       CASE WHEN v.estado = 'CANCELADO' THEN now() END,
+       CASE WHEN v.estado = 'CANCELADO' THEN 'El juzgado suspendió la audiencia por feria administrativa.' END
+FROM (VALUES
+  ('10311204', 'Audiencia de conciliación laboral', 'Llevar la propuesta de acuerdo y la documental original.', 'AUDIENCIA', 'CONFIRMADO', 'ALTA', 'ESTUDIO',
+   1, 0, '09:30', '11:00', FALSE, 'Tribunales II, sala 4', NULL, 'jefe@estudiodemo.test'),
+  ('10234567', 'Mediación prejudicial', 'Primera audiencia de mediación con la aseguradora.', 'MEDIACION', 'PENDIENTE', 'MEDIA', 'ESTUDIO',
+   2, 0, '11:00', '12:30', FALSE, 'Centro Judicial de Mediación', 'https://meet.example.com/mediacion-gimenez', 'empleado1@estudiodemo.test'),
+  (NULL, 'Reunión con cliente nuevo', 'Consulta inicial por un reclamo laboral.', 'REUNION', 'PENDIENTE', 'MEDIA', 'ESTUDIO',
+   0, 0, '17:00', '18:00', FALSE, 'Oficina del estudio', NULL, 'jefe@estudiodemo.test'),
+  (NULL, 'Reunión de equipo semanal', 'Repaso de vencimientos y audiencias de la semana.', 'REUNION', 'PENDIENTE', 'BAJA', 'PARTICIPANTES',
+   3, 0, '10:00', '11:00', FALSE, 'Sala de reuniones', NULL, 'admin@estudiodemo.test'),
+  ('10298877', 'Audiencia testimonial', 'Declaran dos testigos de la parte actora.', 'AUDIENCIA', 'PENDIENTE', 'ALTA', 'ESTUDIO',
+   3, 0, '10:30', '12:00', FALSE, 'Juzgado Civil N.º 12', NULL, 'jefe@estudiodemo.test'),
+  (NULL, 'Pago de tasa de justicia', 'Vence el plazo administrativo para abonar la tasa.', 'VENCIMIENTO', 'PENDIENTE', 'ALTA', 'ESTUDIO',
+   5, 0, '00:00', '23:59:59', TRUE, NULL, NULL, 'empleado2@estudiodemo.test'),
+  ('10311204', 'Audiencia preliminar', NULL, 'AUDIENCIA', 'PENDIENTE', 'MEDIA', 'ESTUDIO',
+   8, 0, '09:00', '10:30', FALSE, 'Tribunales II, sala 2', NULL, 'jefe@estudiodemo.test'),
+  ('10298877', 'Mediación con la aseguradora', NULL, 'MEDIACION', 'PENDIENTE', 'MEDIA', 'ESTUDIO',
+   10, 0, '15:00', '16:30', FALSE, NULL, 'https://meet.example.com/mediacion-sosa', 'empleado1@estudiodemo.test'),
+  (NULL, 'Jornada de actualización procesal', 'Capacitación del Colegio de Abogados.', 'OTRO', 'PENDIENTE', 'BAJA', 'ESTUDIO',
+   12, 1, '00:00', '23:59:59', TRUE, 'Colegio de Abogados', NULL, 'admin@estudiodemo.test'),
+  ('10234567', 'Reunión con el perito contable', NULL, 'REUNION', 'COMPLETADO', 'MEDIA', 'ESTUDIO',
+   -2, 0, '10:00', '11:00', FALSE, 'Oficina del estudio', NULL, 'empleado1@estudiodemo.test'),
+  ('10311204', 'Audiencia de vista de causa', NULL, 'AUDIENCIA', 'CANCELADO', 'MEDIA', 'ESTUDIO',
+   6, 0, '09:00', '10:00', FALSE, 'Tribunales II', NULL, 'jefe@estudiodemo.test'),
+  (NULL, 'Turno médico', NULL, 'OTRO', 'PENDIENTE', 'BAJA', 'PERSONAL',
+   4, 0, '08:00', '09:00', FALSE, NULL, NULL, 'jefe@estudiodemo.test')
+) AS v(expediente, titulo, descripcion, tipo, estado, prioridad, visibilidad,
+       dias, dias_fin, desde, hasta, todo_el_dia, lugar, enlace, responsable)
+-- Sábado o domingo se corre al lunes: una audiencia de fin de semana no es creíble.
+CROSS JOIN LATERAL (
+    SELECT (CURRENT_DATE + v.dias)
+         + CASE extract(isodow FROM CURRENT_DATE + v.dias) WHEN 6 THEN 2 WHEN 7 THEN 1 ELSE 0 END AS dia
+) AS d
+LEFT JOIN causa c ON c.numero_expediente = v.expediente
+JOIN usuario ur ON ur.email = v.responsable
+JOIN usuario uc ON uc.email = 'jefe@estudiodemo.test'
+WHERE NOT EXISTS (SELECT 1 FROM evento_calendario e WHERE e.titulo = v.titulo);
+
+-- Participantes: la reunión de equipo convoca a todos; la conciliación laboral, a Sofía.
+INSERT INTO evento_participante (evento_id, usuario_id)
+SELECT e.id, u.id
+FROM evento_calendario e
+JOIN usuario u ON u.email IN ('jefe@estudiodemo.test', 'empleado1@estudiodemo.test', 'empleado2@estudiodemo.test')
+WHERE e.titulo = 'Reunión de equipo semanal'
+UNION ALL
+SELECT e.id, u.id
+FROM evento_calendario e
+JOIN usuario u ON u.email = 'empleado1@estudiodemo.test'
+WHERE e.titulo = 'Audiencia de conciliación laboral'
+ON CONFLICT DO NOTHING;
+
+-- Recordatorios por defecto del tipo, como si se hubieran cargado desde la aplicación.
+INSERT INTO evento_recordatorio (evento_id, minutos_antes)
+SELECT e.id, r.minutos_antes
+FROM evento_calendario e
+JOIN regla_recordatorio r ON r.tipo_evento = e.tipo AND r.activa
+ON CONFLICT DO NOTHING;
+
+INSERT INTO evento_historial (evento_id, usuario_id, accion, detalle)
+SELECT e.id, e.creado_por, 'CREADO', jsonb_build_object('tipo', e.tipo)
+FROM evento_calendario e
+WHERE NOT EXISTS (SELECT 1 FROM evento_historial h WHERE h.evento_id = e.id);
+
+-- -----------------------------------------------------------------------------
 -- Auditoría de ejemplo
 -- -----------------------------------------------------------------------------
 INSERT INTO auditoria (usuario_id, entidad, entidad_id, accion,
