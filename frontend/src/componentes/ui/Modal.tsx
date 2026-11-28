@@ -32,6 +32,12 @@ const ENFOCABLES =
 export function Modal({ abierto, alCerrar, titulo, descripcion, ancho, pie, children }: Props) {
   const dialogo = useRef<HTMLDivElement>(null);
   const disparador = useRef<Element | null>(null);
+  // Quien usa el modal suele pasar `alCerrar` como función en línea, que es
+  // nueva en cada render. Si el efecto dependiera de ella, cada tecla que
+  // cambia el estado del formulario volvería a correrlo y mandaría el foco
+  // al primer control (la X), cortando lo que se está escribiendo.
+  const cerrar = useRef(alCerrar);
+  cerrar.current = alCerrar;
 
   useEffect(() => {
     if (!abierto) return;
@@ -40,10 +46,13 @@ export function Modal({ abierto, alCerrar, titulo, descripcion, ancho, pie, chil
     const desbordeOriginal = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // El primer control del diálogo recibe el foco; si no hay ninguno, lo toma
-    // el propio diálogo para que el lector de pantalla anuncie el título.
-    const primero = dialogo.current?.querySelector<HTMLElement>(ENFOCABLES);
-    (primero ?? dialogo.current)?.focus();
+    // Si un campo ya tomó el foco (autoFocus), se respeta. Si no, lo recibe el
+    // primer control; sin ninguno, el propio diálogo, para que el lector de
+    // pantalla anuncie el título.
+    if (!dialogo.current?.contains(document.activeElement)) {
+      const primero = dialogo.current?.querySelector<HTMLElement>(ENFOCABLES);
+      (primero ?? dialogo.current)?.focus();
+    }
 
     function alPresionar(evento: KeyboardEvent) {
       // Con un diálogo abierto encima de otro (editar una costa desde su
@@ -53,7 +62,7 @@ export function Modal({ abierto, alCerrar, titulo, descripcion, ancho, pie, chil
 
       if (evento.key === 'Escape') {
         evento.stopPropagation();
-        alCerrar();
+        cerrar.current();
         return;
       }
 
@@ -82,7 +91,7 @@ export function Modal({ abierto, alCerrar, titulo, descripcion, ancho, pie, chil
       document.body.style.overflow = desbordeOriginal;
       (disparador.current as HTMLElement | null)?.focus?.();
     };
-  }, [abierto, alCerrar]);
+  }, [abierto]);
 
   if (!abierto) return null;
 
