@@ -30,7 +30,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sistemalegal
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Aplicar esquema y seeds
         run: |
@@ -38,7 +38,7 @@ jobs:
           psql -h localhost -U postgres -d sistemalegal -v ON_ERROR_STOP=1 -f database/seed/001_catalogos.sql
           psql -h localhost -U postgres -d sistemalegal -v ON_ERROR_STOP=1 -f database/seed/002_datos_demo.sql
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -69,9 +69,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -98,9 +98,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
