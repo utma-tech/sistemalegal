@@ -1,7 +1,9 @@
 # Actualizaciones automáticas de dependencias.
 #
-# Dependabot abre un PR por semana y por ecosistema cuando hay versiones
-# nuevas, y en el acto cuando sale un aviso de seguridad. Los PR pasan por la
+# Dependabot abre como mucho un PR por semana (o por mes) y por ecosistema,
+# con todas las versiones menores y parches juntos, y en el acto cuando sale
+# un aviso de seguridad. Los saltos de versión mayor se ignoran: cambian la
+# API y conviene hacerlos a mano, con tiempo para revisar. Los PR pasan por la
 # misma CI que el resto, así que una actualización que rompe algo no se mergea.
 version: 2
 updates:
@@ -13,6 +15,9 @@ updates:
       dependencias:
         patterns: ['*']
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: npm
     directory: /frontend
@@ -22,13 +27,27 @@ updates:
       dependencias:
         patterns: ['*']
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: pip
     directory: /pdf-service
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      dependencias:
+        patterns: ['*']
+        update-types: [patch]
+    ignore:
+      # En las librerías 0.x cada versión menor puede romper la API.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      acciones:
+        patterns: ['*']
