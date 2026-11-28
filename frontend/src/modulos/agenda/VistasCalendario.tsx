@@ -191,7 +191,23 @@ export function VistaMes({
 /* --- Semana y día ---------------------------------------------------------------- */
 
 const ALTO_HORA = 48;
+// La grilla cubre la jornada del estudio. Un compromiso que cae afuera se
+// muestra pegado al borde más cercano, para que no desaparezca de la vista.
 const HORA_INICIAL = 7;
+const HORA_FINAL = 22;
+const HORAS_VISIBLES = HORA_FINAL - HORA_INICIAL;
+const INICIO_GRILLA = HORA_INICIAL * 60;
+const FIN_GRILLA = HORA_FINAL * 60;
+const DURACION_MINIMA = 30;
+
+/** Lleva un tramo del día (en minutos) a la porción visible de la grilla. */
+function recortarAGrilla(desde: number, hasta: number) {
+  const inicio = Math.min(Math.max(desde, INICIO_GRILLA), FIN_GRILLA - DURACION_MINIMA);
+  const fin = Math.max(Math.min(hasta, FIN_GRILLA), inicio + DURACION_MINIMA);
+  return { inicio, fin };
+}
+
+const aPixeles = (minutosDelDia: number) => ((minutosDelDia - INICIO_GRILLA) / 60) * ALTO_HORA;
 
 export function VistaHoraria({
   dias,
@@ -215,9 +231,9 @@ export function VistaHoraria({
   }, [dias.length]);
   const hoy = fechaDe(ahora);
 
-  // Al abrir, la grilla arranca a las 7: las primeras horas casi nunca tienen nada.
+  // Al cambiar de vista, la grilla vuelve a mostrar el comienzo de la jornada.
   useEffect(() => {
-    if (desplazable.current) desplazable.current.scrollTop = HORA_INICIAL * ALTO_HORA;
+    if (desplazable.current) desplazable.current.scrollTop = 0;
   }, [dias.length]);
 
   const deDiaCompleto = dias.map((dia) =>
@@ -260,11 +276,11 @@ export function VistaHoraria({
       )}
 
       <div className="horaria__cuerpo" ref={desplazable}>
-        <div className="horaria__grilla" style={{ height: 24 * ALTO_HORA }}>
+        <div className="horaria__grilla" style={{ height: HORAS_VISIBLES * ALTO_HORA }}>
           <div className="horaria__horas" aria-hidden>
-            {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} className="horaria__hora" style={{ top: h * ALTO_HORA }}>
-                {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
+            {Array.from({ length: HORAS_VISIBLES + 1 }, (_, i) => HORA_INICIAL + i).map((h) => (
+              <div key={h} className="horaria__hora" style={{ top: (h - HORA_INICIAL) * ALTO_HORA }}>
+                {`${String(h).padStart(2, '0')}:00`}
               </div>
             ))}
           </div>
@@ -297,7 +313,10 @@ export function VistaHoraria({
                   props.alCrear
                     ? (evento) => {
                         const rect = evento.currentTarget.getBoundingClientRect();
-                        const hora = Math.max(0, Math.min(23, Math.floor((evento.clientY - rect.top) / ALTO_HORA)));
+                        const hora = Math.max(
+                          HORA_INICIAL,
+                          Math.min(HORA_FINAL - 1, HORA_INICIAL + Math.floor((evento.clientY - rect.top) / ALTO_HORA)),
+                        );
                         props.alCrear!(dia, `${String(hora).padStart(2, '0')}:00`);
                       }
                     : undefined
@@ -305,7 +324,8 @@ export function VistaHoraria({
               >
                 {bloques.map(({ item, desde, hasta, columna, columnas, grupo }) => {
                   const Icono = TIPOS_AGENDA[item.tipo].icono;
-                  const alto = ((hasta - desde) / 60) * ALTO_HORA;
+                  const { inicio, fin } = recortarAGrilla(desde, hasta);
+                  const alto = ((fin - inicio) / 60) * ALTO_HORA;
                   const conResumen = tope === 1 && resumidos.has(grupo);
                   return (
                     <button
@@ -313,7 +333,7 @@ export function VistaHoraria({
                       type="button"
                       className={`${clasesElemento('bloque-agenda', item, props.seleccion)}${conResumen ? ' bloque-agenda--con-resumen' : ''}`}
                       style={{
-                        top: (desde / 60) * ALTO_HORA,
+                        top: aPixeles(inicio),
                         height: alto - 2,
                         left: `calc(${(columna / columnas) * 100}% + 2px)`,
                         width: `calc(${100 / columnas}% - 4px)`,
@@ -346,7 +366,7 @@ export function VistaHoraria({
                     key={`mas-${desde}`}
                     type="button"
                     className={`bloque-agenda__mas${tope === 1 ? ' bloque-agenda__mas--encima' : ''}`}
-                    style={{ top: (desde / 60) * ALTO_HORA + (tope === 1 ? 3 : 0) }}
+                    style={{ top: aPixeles(recortarAGrilla(desde, desde).inicio) + (tope === 1 ? 3 : 0) }}
                     onClick={(evento) => {
                       evento.stopPropagation();
                       alVerDia?.(dia);
@@ -357,8 +377,8 @@ export function VistaHoraria({
                     +{cantidad}
                   </button>
                 ))}
-                {dia === hoy && horaActual && (
-                  <div className="horaria__ahora" style={{ top: (aMinutos(horaActual) / 60) * ALTO_HORA }} aria-hidden />
+                {dia === hoy && horaActual && aMinutos(horaActual) >= INICIO_GRILLA && aMinutos(horaActual) <= FIN_GRILLA && (
+                  <div className="horaria__ahora" style={{ top: aPixeles(aMinutos(horaActual)) }} aria-hidden />
                 )}
               </div>
             );
