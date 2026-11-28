@@ -466,6 +466,8 @@ button.horaria__dia-boton:hover {
   min-height: 420px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Aire para que se lean enteras la primera y la última hora. */
+  padding-block: 8px;
 }
 
 .horaria__grilla {
